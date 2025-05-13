@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💥 BRAINROT UNIVERZUM 💥</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      color: #fff;
+      font-family: 'Comic Sans MS', cursive;
+      overflow-x: hidden;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 5vh;
+      font-size: 3rem;
+      color: #0ff;
+      animation: pulse 2s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(1); color: #0ff; }
+      to { transform: scale(1.1); color: #f0f; }
+    }
+    .nav {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 40px;
+    }
+    .nav a {
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+      background: #ff00ff;
+      padding: 15px 25px;
+      border-radius: 15px;
+      transition: transform 0.3s, background 0.3s;
+    }
+    .nav a:hover {
+      background: #00ffff;
+      transform: scale(1.2) rotate(3deg);
+    }
+    .bg-animation {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    .crazy-text {
+      position: absolute;
+      animation: spinText 20s linear infinite;
+      color: #ff00ff;
+      font-size: 2rem;
+    }
+    @keyframes spinText {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(100vw, 100vh) rotate(720deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-animation">
+    <canvas id="stars"></canvas>
+  </div>
+  <h1>💀 ÜDV A BRAINROT UNIVERZUMBAN 💀</h1>
+
+  <div class="nav">
+    <a href="memeverzum.html">🌀 Memeverzum</a>
+    <a href="gptpropaganda.html">🤖 GPT Propaganda</a>
+    <a href="chaosgallery.html">🎨 Káosz Galéria</a>
+    <a href="finalschizo.html">🚨 Végső Schizo Zóna</a>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    let stars = Array(400).fill().map(() => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 2,
+      speed: Math.random() * 1 + 0.5
+    }));
+
+    function animateStars() {
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = 'white';
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+        s.y += s.speed;
+        if (s.y > height) {
+          s.y = 0;
+          s.x = Math.random() * width;
+        }
+      });
+      requestAnimationFrame(animateStars);
+    }
+    animateStars();
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    setInterval(() => {
+      const t = document.createElement('div');
+      t.className = 'crazy-text';
+      t.innerText = ['💀', '😵‍💫', '📡', '🧠', '🗯️', '🔊'][Math.floor(Math.random() * 6)];
+      t.style.top = Math.random() * window.innerHeight + 'px';
+      t.style.left = Math.random() * window.innerWidth + 'px';
+      t.style.animationDuration = (Math.random() * 10 + 5) + 's';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 10000);
+    }, 300);
+  </script>
+</body>
+</html>

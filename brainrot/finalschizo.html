@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FINAL SCHIZO 💣🧠</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Courier New', monospace;
+      color: white;
+      background: black;
+      overflow: hidden;
+    }
+
+    body {
+      background: #222;
+      animation: static 0.3s infinite linear;
+    }
+
+    @keyframes static {
+      0% { background-position: 0 0; }
+      50% { background-position: 5px 5px; }
+      100% { background-position: 0 0; }
+    }
+
+    header {
+      text-align: center;
+      color: #ff0000;
+      font-size: 3rem;
+      padding: 3rem;
+      text-transform: uppercase;
+      animation: glitchEffect 1s infinite alternate;
+    }
+
+    @keyframes glitchEffect {
+      0% { text-shadow: 2px 2px red, -2px -2px blue; }
+      50% { text-shadow: -2px -2px yellow, 2px 2px green; }
+      100% { text-shadow: 2px 2px red, -2px -2px blue; }
+    }
+
+    nav {
+      text-align: center;
+      margin: 2rem;
+    }
+
+    nav a {
+      color: #ff0;
+      text-decoration: none;
+      padding: 1rem 2rem;
+      border: 2px solid #ff0;
+      margin: 0.5rem;
+      font-size: 1.5rem;
+      border-radius: 5px;
+      transition: 0.3s;
+    }
+
+    nav a:hover {
+      background: #ff0;
+      color: black;
+    }
+
+    .floating-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 5rem;
+      color: #ff0;
+      animation: rotateText 5s linear infinite;
+    }
+
+    @keyframes rotateText {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .chaos-box {
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(45deg, #ff0, #f00);
+      position: absolute;
+      animation: chaosEffect 4s infinite alternate;
+      transform-origin: center;
+    }
+
+    @keyframes chaosEffect {
+      0% { transform: rotate(0deg) scale(1); opacity: 1; }
+      50% { transform: rotate(180deg) scale(0.5); opacity: 0.7; }
+      100% { transform: rotate(360deg) scale(1.2); opacity: 1; }
+    }
+
+    .message {
+      color: #ff0;
+      font-size: 2rem;
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: glitchyText 1.5s infinite alternate;
+    }
+
+    @keyframes glitchyText {
+      0% { text-shadow: 2px 0 red, -2px 0 green; }
+      50% { text-shadow: -2px 0 blue, 2px 0 yellow; }
+      100% { text-shadow: 2px 0 red, -2px 0 green; }
+    }
+
+    footer {
+      text-align: center;
+      color: #888;
+      padding: 2rem;
+      font-size: 1rem;
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    💣 FINAL SCHIZO 💣
+  </header>
+
+  <nav>
+    <a href="index.html">🏠 Főoldal</a>
+    <a href="memeverzum.html">😵‍💫 Memeverzum</a>
+    <a href="gptpropaganda.html">📢 GPT Propaganda</a>
+    <a href="chaosgallery.html">🖼️ Káosz Galéria</a>
+    <a href="finalschizo.html">💣 Végső Schizo</a>
+  </nav>
+
+  <div class="floating-text">A rendszer megőrjít!</div>
+
+  <div class="chaos-box" style="top:10%; left:10%;"></div>
+  <div class="chaos-box" style="top:50%; left:60%;"></div>
+  <div class="chaos-box" style="top:80%; left:30%;"></div>
+
+  <div class="message">Az elme már nem működik...</div>
+
+  <footer>
+    © 2025 Brainrot Network. Készülj fel a végső felismerésre.
+  </footer>
+</body>
+</html>

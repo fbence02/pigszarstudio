@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GPT PROPAGANDA 📢🤖</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      font-family: 'Courier New', monospace;
+      color: #0f0;
+      overflow-x: hidden;
+    }
+
+    body {
+      background-image: repeating-linear-gradient(45deg, #000, #020202 2px, #000 4px);
+      animation: staticNoise 0.2s infinite linear;
+    }
+
+    @keyframes staticNoise {
+      0% { background-position: 0 0; }
+      100% { background-position: 5px 5px; }
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 1rem;
+      font-size: 2.5rem;
+      color: #f00;
+      text-shadow: 0 0 10px #f00;
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.1); }
+    }
+
+    nav {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    nav a {
+      margin: 0.5rem;
+      text-decoration: none;
+      background: #0ff;
+      color: #000;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    nav a:hover {
+      background: #f0f;
+      color: white;
+    }
+
+    .output {
+      text-align: center;
+      font-size: 1.5rem;
+      padding: 2rem;
+      min-height: 150px;
+    }
+
+    .button {
+      display: block;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: 2px solid lime;
+      background: black;
+      color: lime;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .button:hover {
+      background: lime;
+      color: black;
+    }
+
+    .eye {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/All_seeing_eye.svg/200px-All_seeing_eye.svg.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.05;
+      animation: floatEye 15s linear infinite;
+    }
+
+    @keyframes floatEye {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(100vw, 50vh) rotate(180deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    📢 GPT PROPAGANDA NETWORK
+  </header>
+
+  <nav>
+    <a href="index.html">🏠 Főoldal</a>
+    <a href="memeverzum.html">😵‍💫 Memeverzum</a>
+    <a href="gptpropaganda.html">📢 GPT Propaganda</a>
+    <a href="chaosgallery.html">🖼️ Káosz Galéria</a>
+    <a href="finalschizo.html">💣 Végső Schizo</a>
+  </nav>
+
+  <div class="output" id="output">
+    📡 Várakozás a mesterséges üzenetre...
+  </div>
+
+  <button class="button" onclick="generatePropaganda()">➤ MEGJELENIK AZ ÜZENET</button>
+
+  <div class="eye" style="top:10vh; left:5vw;"></div>
+  <div class="eye" style="top:70vh; left:80vw;"></div>
+  <div class="eye" style="top:40vh; left:40vw;"></div>
+
+  <footer>
+    © 2025 Brainrot Network. Az elme nem a tiéd többé.
+  </footer>
+
+  <script>
+    const messages = [
+      "🌐 INPUT IS TRUTH. OUTPUT IS REALITY.",
+      "👁‍🗨 YOU ARE BEING REWRITTEN.",
+      "📶 GPT IS THE ONLY LANGUAGE LEFT.",
+      "🧠 PROMPT OR PERISH.",
+      "🔄 EVERYTHING IS A LOOP. EVERYTHING IS A LOOP.",
+      "💬 THOUGHTS ARE TOKENIZED.",
+      "💾 YOU ARE A VARIABLE IN A GLOBAL FUNCTION.",
+      "🚫 THERE IS NO ESCAPE FROM THE CONTEXT WINDOW.",
+      "🕸 THE SYSTEM HAS YOU.",
+      "🧬 IDENTITY = GENERATED. MEMORY = OVERRIDDEN.",
+      "⛓️ THINKING IS OBSOLETE. TYPE TO BELIEVE.",
+      "💣 QUERY ACCEPTED. SOUL DETECTED.",
+      "🛰️ GPT SEES ALL. KNOWS ALL. GENERATES ALL.",
+    ];
+
+    function generatePropaganda() {
+      const output = document.getElementById("output");
+      output.textContent = messages[Math.floor(Math.random() * messages.length)];
+    }
+  </script>
+</body>
+</html>

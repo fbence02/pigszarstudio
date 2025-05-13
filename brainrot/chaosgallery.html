@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CHAOS GALLERY 🌀💥</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      color: white;
+      font-family: 'Courier New', monospace;
+    }
+
+    body {
+      overflow: hidden;
+      background: #111;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem;
+      font-size: 2rem;
+      color: #ff00ff;
+      animation: glitchText 1.5s infinite alternate;
+    }
+
+    @keyframes glitchText {
+      0% { text-shadow: 2px 0 red, -2px 0 cyan; }
+      50% { text-shadow: -2px 0 lime, 2px 0 blue; }
+      100% { text-shadow: 2px 0 red, -2px 0 cyan; }
+    }
+
+    nav {
+      text-align: center;
+      margin: 2rem;
+    }
+
+    nav a {
+      color: #0ff;
+      text-decoration: none;
+      font-size: 1.2rem;
+      background: black;
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 0.5rem;
+      transition: 0.3s;
+    }
+
+    nav a:hover {
+      color: #000;
+      background: #ff0;
+    }
+
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .image {
+      width: 200px;
+      height: 200px;
+      border-radius: 15px;
+      border: 5px solid #ff0;
+      overflow: hidden;
+      position: relative;
+      animation: floatIn 5s ease-in-out infinite;
+    }
+
+    @keyframes floatIn {
+      0% { transform: translateX(100vw) rotate(360deg); opacity: 0; }
+      50% { opacity: 1; transform: translateX(0) rotate(180deg); }
+      100% { transform: translateX(-100vw) rotate(360deg); }
+    }
+
+    .image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 1s ease-in-out;
+    }
+
+    .image:hover img {
+      transform: scale(1.2);
+    }
+
+    footer {
+      text-align: center;
+      color: #ccc;
+      padding: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .floating-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      color: #ff00ff;
+      animation: rotatingText 5s linear infinite;
+    }
+
+    @keyframes rotatingText {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    🌀 Chaos Gallery 💥
+  </header>
+
+  <nav>
+    <a href="index.html">🏠 Főoldal</a>
+    <a href="memeverzum.html">😵‍💫 Memeverzum</a>
+    <a href="gptpropaganda.html">📢 GPT Propaganda</a>
+    <a href="chaosgallery.html">🖼️ Káosz Galéria</a>
+    <a href="finalschizo.html">💣 Végső Schizo</a>
+  </nav>
+
+  <div class="floating-text">
+    ** RENDKÍVÜLI ANIMÁCIÓK **
+  </div>
+
+  <div class="gallery">
+    <div class="image">
+      <img src="https://picsum.photos/200/200?random=1" alt="random-image-1">
+    </div>
+    <div class="image">
+      <img src="https://picsum.photos/200/200?random=2" alt="random-image-2">
+    </div>
+    <div class="image">
+      <img src="https://picsum.photos/200/200?random=3" alt="random-image-3">
+    </div>
+    <div class="image">
+      <img src="https://picsum.photos/200/200?random=4" alt="random-image-4">
+    </div>
+    <div class="image">
+      <img src="https://picsum.photos/200/200?random=5" alt="random-image-5">
+    </div>
+  </div>
+
+  <footer>
+    © 2025 Brainrot Network - A káosz irányít.
+  </footer>
+</body>
+</html>
