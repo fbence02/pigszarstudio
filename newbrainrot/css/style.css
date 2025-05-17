@@ -1,0 +1,99 @@
+body {
+  background: linear-gradient(45deg, red, white, green);
+  font-family: 'Comic Sans MS', cursive;
+  color: yellow;
+  text-align: center;
+  animation: spinBg 10s infinite linear;
+}
+
+@keyframes spinBg {
+  0% { background-position: 0 0; }
+  100% { background-position: 1000px 1000px; }
+}
+
+.header {
+  background-color: rgba(0,0,0,0.6);
+  padding: 20px;
+  border: 5px dashed gold;
+}
+
+nav a {
+  color: cyan;
+  font-size: 20px;
+  margin: 10px;
+  text-decoration: none;
+  font-weight: bold;
+  text-shadow: 1px 1px 4px magenta;
+}
+
+.spin-img {
+  width: 300px;
+  animation: spin 5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+button {
+  font-size: 24px;
+  padding: 15px;
+  background: magenta;
+  color: white;
+  border: 3px solid black;
+  cursor: pointer;
+  animation: flash 1s infinite alternate;
+}
+
+@keyframes flash {
+  from { background: magenta; }
+  to { background: yellow; color: red; }
+}
+
+.gallery {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.gallery img {
+  width: 200px;
+  border: 5px dotted red;
+  transform: rotate(-2deg);
+  transition: transform 0.3s ease;
+}
+
+.gallery img:hover {
+  transform: rotate(10deg) scale(1.2);
+  filter: hue-rotate(90deg);
+}
+
+.brainrot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.brainrot-form input,
+.brainrot-form textarea {
+  padding: 10px;
+  border: 3px dashed green;
+  background: rgba(255,255,255,0.8);
+  font-family: "Comic Sans MS", cursive;
+}
+
+.floating-pizza {
+  position: absolute;
+  width: 50px;
+  animation: floatPizza 10s infinite linear;
+}
+
+@keyframes floatPizza {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-1000px) rotate(720deg); }
+}
