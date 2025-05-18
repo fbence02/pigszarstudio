@@ -6,6 +6,7 @@ main {
 }
 
 body {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;;
     margin: 0;
     background-color: #f4f1de;
 }
@@ -15,7 +16,7 @@ body {
     top: 0;
     width: 60px;
     height: 100vh;
-    background-color: #1F1F1F;
+    background-color: #1f1f1f;
     border-right: 8px solid orange;
     overflow: hidden;
     transition: width 0.3s ease;
@@ -54,7 +55,7 @@ body {
 }
 
 .arrow img {
-  width: 100%;
+    width: 100%;
 }
 
 .navbar:hover .arrow {
@@ -137,15 +138,54 @@ body {
 }
 
 .footer .youtube:hover {
-    color:red;
+    color: red;
+}
+
+.brainrot a {
+    color: #1f1f1f;
+}
+
+main img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 30px;
+    opacity: 0;
+    animation: fadeIn 2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+main h1 {
+    font-size: 40px;
+    text-decoration: underline;
 }
 
 main h2 {
-    text-align: center;
+    text-align: left;
 }
 
-.smalltext p {
-    font-size: 5px;
+.story p {
+    font-size: 20px;
+}
+
+.story a {
+    text-decoration: none;
+    color: rgb(112, 86, 38);
+}
+
+.story a:hover {
+    color: rgb(181, 118, 0);
+    text-shadow: 0 0 10px orange, 0 0 20px #ffc267;
+}
+
+.smalltext {
+    font-size: 12px;
     color: black;
     text-align: right;
+    font-style: italic;
 }
