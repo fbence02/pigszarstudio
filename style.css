@@ -11,6 +11,10 @@ body {
     background-color: #f4f1de;
 }
 
+main hr {
+    width: 100vw;
+}
+
 .navbar {
     position: fixed;
     top: 0;
