@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>🛒 MEGA SCHIZO SHOP 🛒</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(45deg, #000, #ff00ff, #00ffff);
+      background-size: 400% 400%;
+      animation: bgShift 10s ease infinite;
+      font-family: 'Comic Sans MS', cursive;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    @keyframes bgShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 4rem;
+      margin: 30px 0;
+      color: #0ff;
+      animation: neonFlash 1s infinite alternate;
+    }
+
+    @keyframes neonFlash {
+      from { text-shadow: 0 0 10px #0ff; }
+      to { text-shadow: 0 0 20px #f0f; }
+    }
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .item {
+      background: rgba(0,0,0,0.6);
+      border: 3px dashed #f0f;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      transition: transform 0.3s ease-in-out, background 0.3s;
+      position: relative;
+    }
+
+    .item:hover {
+      transform: rotate(3deg) scale(1.1);
+      background: rgba(255, 0, 255, 0.3);
+    }
+
+    .item img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 2px solid #fff;
+    }
+
+    .item h2 {
+      font-size: 1.5rem;
+      margin: 15px 0 10px;
+    }
+
+    .price {
+      font-size: 1.2rem;
+      color: #0ff;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .buy-button {
+      background: #ff00ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .buy-button:hover {
+      background: #00ffff;
+      transform: scale(1.1) rotate(-1deg);
+    }
+
+    .crazy-banner {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: 2rem;
+      animation: slideSpin 15s linear infinite;
+      color: #ff00ff;
+      z-index: 999;
+    }
+
+    @keyframes slideSpin {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(100vw, 100vh) rotate(1440deg); }
+    }
+
+    .nav {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+      border-bottom: 3px dashed #f0f;
+      z-index: 999;
+      position: sticky;
+      top: 0;
+    }
+
+    .nav a {
+      text-decoration: none;
+      color: #fff;
+      font-weight: bold;
+      background: #ff00ff;
+      padding: 12px 20px;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      transition: transform 0.3s, background 0.3s;
+      box-shadow: 0 0 10px #00ffff;
+    }
+
+    .nav a:hover {
+      background: #00ffff;
+      color: black;
+      transform: scale(1.2) rotate(3deg);
+      box-shadow: 0 0 20px #ff00ff;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="crazy-banner">🛸🔥 BRAINROT SHOP ZÓNA AKTIVÁLVA 🔥🛸</div>
+
+  <h1>🛒 MEGA SCHIZO SHOP 🛒</h1>
+
+  <div class="nav">
+    <a href="index.html">🏠 Fődimenzió</a>
+    <a href="memeverzum.html">🌀 Memeverzum</a>
+    <a href="gptpropaganda.html">🤖 GPT Propaganda</a>
+    <a href="chaosgallery.html">🎨 Káosz Galéria</a>
+    <a href="finalschizo.html">🚨 Végső Schizo Zóna</a>
+    <a href="shopzone.html">🛒 Shopzone</a>
+  </div>
+
+  <div class="shop-grid">
+    <div class="item">
+      <img src="https://picsum.photos/400/300?random=10" alt="Chaos Kiscica">
+      <h2>💎 Káosz Kiscica NFT</h2>
+      <div class="price">999₿ vagy 42000 HUF</div>
+      <button class="buy-button">Veszem, mielőtt elolvad!</button>
+    </div>
+
+    <div class="item">
+      <img src="https://placebear.com/400/300" alt="Schizo Maci">
+      <h2>🐻 Schizo Maci Plüss</h2>
+      <div class="price">13 000 HUF</div>
+      <button class="buy-button">Beteszem a dimenziókosárba</button>
+    </div>
+
+    <div class="item">
+      <img src="https://picsum.photos/400/300?random=42" alt="Galaktikus Teafőző">
+      <h2>🫖 Galaktikus Teafőző</h2>
+      <div class="price">6 666 HUF</div>
+      <button class="buy-button">Kérek két kannával</button>
+    </div>
+
+    <div class="item">
+      <img src="https://picsum.photos/400/300?blur=2" alt="Dimenziótorzító Szemüveg">
+      <h2>🕶️ Dimenziótorzító Szemüveg</h2>
+      <div class="price">22 222 HUF</div>
+      <button class="buy-button">Belépek a másik valóságba</button>
+    </div>
+  </div>
+
+</body>
+</html>
