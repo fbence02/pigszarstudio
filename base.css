@@ -1,0 +1,151 @@
+main {
+    margin-left: 60px;
+    padding-left: 50px;
+    padding-right: 50px;
+    transition: margin-left 0.3s ease;
+}
+
+body {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
+    ;
+    margin: 0;
+    background-color: #f4f1de;
+}
+
+main hr {
+    width: 100%;
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 60px;
+    height: 100vh;
+    background-color: #1f1f1f;
+    border-right: 8px solid orange;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    z-index: 1000;
+}
+
+
+.navbar:hover {
+    width: 250px;
+}
+
+.logo {
+    flex: 0 0 auto;
+}
+
+.logo img {
+    width: 40px;
+    margin-bottom: 40px;
+    transition: transform 0.3s ease;
+}
+
+.arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s ease;
+    opacity: 1;
+    pointer-events: none;
+    z-index: 1100;
+}
+
+.arrow img {
+    width: 100%;
+}
+
+.navbar:hover .arrow {
+    opacity: 0;
+}
+
+.navbar:hover .logo img {
+    transform: scale(1.2);
+}
+
+.nav_links {
+    margin-left: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    align-items: flex-start;
+    padding-left: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.1s;
+    flex: 1;
+}
+
+
+.navbar:hover .nav_links {
+    opacity: 1;
+}
+
+.nav_links a {
+    text-align: center;
+    position: relative;
+    color: white;
+    font-size: large;
+    text-decoration: none;
+    border: 2px solid white;
+    padding: 10px 15px;
+    border-radius: 5px;
+}
+
+.nav_links a:hover {
+    box-shadow: 0 0 10px orange, 0 0 20px #ffc267;
+    background-color: #ffc267;
+    color: black;
+    border-color: orange;
+}
+
+.nav_links,
+.footer {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.navbar:hover .nav_links,
+.navbar:hover .footer {
+    opacity: 1;
+    visibility: visible;
+}
+
+.footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px;
+    padding-bottom: 40px;
+    gap: 5px;
+}
+
+.footer a,
+.footer p {
+    color: white;
+    font-size: small;
+    text-decoration: none;
+    margin: 5px;
+}
+
+.footer a:hover {
+    color: orange;
+}
+
+.footer .youtube:hover {
+    color: red;
+}
+
+.brainrot a {
+    color: #1f1f1f;
+}
