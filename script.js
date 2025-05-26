@@ -6,7 +6,8 @@ const galleries = {
     "./images/gallery/4.png",
     "./images/gallery/5.png",
     "./images/gallery/6.png",
-    "./images/gallery/7.png"
+    "./images/gallery/7.png",
+    "./images/gallery/28.png"
   ],
   gallery2: [
     "./images/gallery/8.png",
@@ -14,7 +15,8 @@ const galleries = {
     "./images/gallery/10.png",
     "./images/gallery/11.png",
     "./images/gallery/12.png",
-    "./images/gallery/13.png"
+    "./images/gallery/13.png",
+    "./images/gallery/27.png"
   ],
   gallery3: [
     "./images/gallery/14.png",

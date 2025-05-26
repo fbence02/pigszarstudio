@@ -6,8 +6,7 @@ main {
 }
 
 body {
-    font-family: "Comic Sans MS", "Comic Sans", cursive;
-    ;
+    font-family: 'Century Gothic', sans-serif;
     margin: 0;
     background-color: #f4f1de;
 }
