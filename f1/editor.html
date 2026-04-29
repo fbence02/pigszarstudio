@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Track Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #07111d 0%, #0b1a2f 100%);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #toolbar {
+            background: #222;
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid #e10600;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            align-items: center;
+        }
+
+        .toolbar-button {
+            background: #e10600;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .toolbar-button:hover {
+            background: #ff1a12;
+            transform: scale(1.05);
+        }
+
+        .toolbar-button:active {
+            transform: scale(0.98);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 30px;
+            background: #444;
+            margin: 0 5px;
+        }
+
+        .toolbar-label {
+            color: #aaa;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        #editorContainer {
+            display: flex;
+            height: calc(100vh - 55px);
+            position: relative;
+        }
+
+        #canvas {
+            display: block;
+            flex: 1;
+            background: radial-gradient(circle at center, #1c3653 0%, #08111f 100%);
+            cursor: crosshair;
+        }
+
+        #infoPanel {
+            width: 250px;
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .info-section h3 {
+            color: #0ff;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-item {
+            margin: 8px 0;
+            color: #aaa;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 11px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #222;
+            border: 2px solid #e10600;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            color: #fff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 28px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .modal-close:hover {
+            color: #e10600;
+        }
+
+        /* Import Track Modal */
+        #importTrackModal {
+            max-width: 800px;
+        }
+
+        .track-list-container {
+            display: flex;
+            gap: 15px;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        #trackList {
+            flex: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            overflow-y: auto;
+        }
+
+        .track-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #aaa;
+        }
+
+        .track-item:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .track-item.selected {
+            background: #e10600;
+            color: #fff;
+            border-left: 4px solid #fff;
+        }
+
+        #trackInfo {
+            flex: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            color: #aaa;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .track-info-content {
+            width: 100%;
+            text-align: left;
+        }
+
+        .track-info-item {
+            margin: 10px 0;
+            color: #aaa;
+        }
+
+        .track-info-item strong {
+            color: #0ff;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        /* Export Modal */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #e10600;
+            box-shadow: 0 0 5px rgba(225, 6, 0, 0.3);
+        }
+
+        /* Modal Buttons */
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+        .modal-button.primary {
+            background: #e10600;
+            color: #fff;
+        }
+
+        .modal-button.primary:hover {
+            background: #ff1a12;
+        }
+
+        .modal-button.primary:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .modal-button.secondary {
+            background: #333;
+            color: #aaa;
+            border: 1px solid #555;
+        }
+
+        .modal-button.secondary:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        /* Keyboard Hints */
+        .keyboard-hints {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.5;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+
+        .keyboard-hints strong {
+            color: #0ff;
+        }
+
+        /* Hidden File Input */
+        #fileInput {
+            display: none;
+        }
+
+        #referenceImageWarning {
+            color: #ff9800;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <button class="toolbar-button" id="btnImportTrack">Import Track</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-button" id="btnImportImage">Import Reference</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-button" id="btnSave">Save</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-button" id="btnBack">Back</button>
+        <span class="toolbar-label" id="statusLabel">Ready</span>
+    </div>
+
+    <!-- Editor Container -->
+    <div id="editorContainer">
+        <canvas id="canvas"></canvas>
+        <div id="infoPanel">
+            <div class="info-section">
+                <h3>Editor Info</h3>
+                <div class="info-item"><span class="info-label">Points:</span> <span id="pointCount">0</span></div>
+                <div class="info-item"><span class="info-label">Selected:</span> <span id="selectedPoint">None</span></div>
+                <div class="info-item"><span class="info-label">Zoom:</span> <span id="zoomLevel">100%</span></div>
+            </div>
+            <div class="info-section">
+                <h3>Controls</h3>
+                <div class="keyboard-hints">
+                    <strong>Left Click:</strong> Place/Select point<br>
+                    <strong>Right Click:</strong> Delete point<br>
+                    <strong>Drag:</strong> Move point<br>
+                    <strong>Scroll:</strong> Zoom<br>
+                    <strong>Middle Click:</strong> Pan view<br>
+                    <strong>D:</strong> Delete selected<br>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Track Modal -->
+    <div id="importTrackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Track</h2>
+                <button class="modal-close" id="closeImportTrack">&times;</button>
+            </div>
+            <div class="track-list-container">
+                <div id="trackList"></div>
+                <div id="trackInfo">
+                    <span style="color: #666;">Select a track to view details</span>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary" id="cancelImport">Close</button>
+                <button class="modal-button primary" id="openTrack" disabled>Open</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Modal -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Save Track</h2>
+                <button class="modal-close" id="closeExport">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="trackName">Track Name *</label>
+                <input type="text" id="trackName" placeholder="e.g., Monaco Circuit" required>
+            </div>
+            <div class="form-group">
+                <label for="lapCount">Lap Count *</label>
+                <input type="number" id="lapCount" placeholder="e.g., 3" min="1" max="100" required value="3">
+            </div>
+            <div id="referenceImageWarning"></div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary" id="cancelExport">Cancel</button>
+                <button class="modal-button primary" id="saveTrack">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unsaved Changes Warning Modal -->
+    <div id="unsavedWarningModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Unsaved Changes</h2>
+            </div>
+            <p style="color: #aaa; margin-bottom: 20px;">You have unsaved points. If you leave, they will be lost. Are you sure?</p>
+            <div class="modal-buttons">
+                <button class="modal-button secondary" id="cancelLeave">Cancel</button>
+                <button class="modal-button primary" id="confirmLeave">Leave Without Saving</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="fileInput" accept="image/*">
+
+    <script src="editor.js"></script>
+</body>
+</html>

@@ -175,6 +175,10 @@ document.getElementById('btnHost').onclick = async () => {
     initPeer(myId); 
 };
 
+document.getElementById('btnEditor').onclick = () => {
+    window.location.href = './editor.html';
+};
+
 document.getElementById('btnStartRace').onclick = () => {
     for(let id in clients) clients[id].send({ type: 'start' });
     startGame();
