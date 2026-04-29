@@ -31,7 +31,7 @@ let currentRPM = 0;
 let globalVolume = 1.0;
 let particles = [];
 
-// --- ÚJ: Algoritmikus Görbesimító (Chaikin's Algorithm) ---
+// --- Algoritmikus Görbesimító (Chaikin's Algorithm) ---
 function generateSmoothCurve(path, iterations = 4) {
     if (path.length < 3) return path;
     let smoothed = [...path];
@@ -62,10 +62,7 @@ async function loadTrack() {
     try {
         const response = await fetch('track.json');
         let rawTrack = await response.json();
-        
-        // Itt hívjuk meg a simítót a betöltött pályán! (5 iteráció = tökéletes ívek)
         track = generateSmoothCurve(rawTrack, 5); 
-        console.log("Pálya betöltve és lesimítva! Pontok száma:", track.length);
     } catch (error) {
         alert("Hiba a pálya betöltésekor!");
         console.error(error);
@@ -309,7 +306,7 @@ function updatePhysics(ts) {
     let speedAbs = Math.abs(player.speed);
     let activeGear;
 
-    // 6 Sebességes váltó - Felére csökkentett ráták a sokkal finomabb, reálisabb gyorsulásért
+    // 6 Sebességes váltó
     if (player.speed < -0.5) {
         activeGear = { id: 'R', min: 0, max: 25, rate: 0.003 };
     } else if (speedAbs < 14) {
@@ -337,26 +334,21 @@ function updatePhysics(ts) {
         if (player.speed < 0) {
             player.speed += 0.8 * ts; // Kisebb fék rükvercből
         } else {
-            // LERP: Sokat finomított, íves gyorsulás
             player.speed += (80 - player.speed) * activeGear.rate * ts;
         }
     } else if (keys.ArrowDown) {
         if (player.speed > 0) {
-            player.speed -= 0.8 * ts; // A fék satuzás helyett mostmár reálisan lassít
+            player.speed -= 0.8 * ts; 
         } else {
             player.speed += (-25 - player.speed) * activeGear.rate * ts; // Rükverc
         }
     } else {
-        // Motorfék/Súrlódás, ha nem nyomod a gázt
         player.speed *= Math.pow(player.friction, ts);
     }
 
     // Kormányzás (DRASZTIKUSAN felkeményedik a kormány nagy sebességnél!)
     if (Math.abs(player.speed) > 0.5) {
         let turnDir = player.speed > 0 ? 1 : -1;
-        
-        // JAVÍTÁS: A sebesség növekedésével akár 60%-kal is csökkenhet az érzékenység. 
-        // Lassú kanyarban fordulékony, egyenesben stabil!
         let currentTurnSpeed = player.turnSpeed * (1 - (speedAbs / 80) * 0.6);
         
         if (keys.ArrowLeft) player.angle -= currentTurnSpeed * turnDir * ts;
@@ -373,7 +365,6 @@ function updatePhysics(ts) {
     let wallEdge = asphaltEdge + 180; // Fal távolsága
 
     if (trackInfo.dist > wallEdge) {
-        // BELECSAPÓDÁS A GUMIFALBA
         let normalAngle = Math.atan2(trackInfo.normal.y, trackInfo.normal.x);
         player.angle = 2 * normalAngle - Math.PI - player.angle; 
         player.speed *= 0.4; 
@@ -386,8 +377,6 @@ function updatePhysics(ts) {
             lastCrashTime = Date.now(); 
         }
     } else if (trackInfo.dist > asphaltEdge) {
-        // JAVÍTÁS: KICSUZSZÁS A KAVICSÁGYBA 
-        // 0.85-ös satufék helyett 0.975 -> Sokkal reálisabban fogja meg a kocsit, de nem állít meg azonnal!
         player.speed *= Math.pow(0.975, ts); 
     }
 
@@ -405,7 +394,7 @@ function drawF1Car(ctx, x, y, angle, color, name) {
     
     // Névtábla
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 24px Arial'; // Megnövelve, hogy a zoom miatt is olvasható maradjon
+    ctx.font = 'bold 24px Arial'; 
     ctx.textAlign = 'center';
     ctx.shadowBlur = 4;
     ctx.shadowColor = '#000';
@@ -438,7 +427,7 @@ function drawCircuit() {
     // 2. Sóderágy (Szélesített lassító zóna)
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
     for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#c4aa62'; ctx.stroke(); // Sárgás kavics szín
+    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#c4aa62'; ctx.stroke();
 
     // 3. Fehér rázókő alap
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
@@ -483,6 +472,7 @@ function gameLoop(timestamp) {
     let gearEl = document.getElementById('gearVal');
     if(gearEl) gearEl.innerText = currentGearDisplay;
 
+    // HAGYOMÁNYOS TOP-DOWN NÉZET
     ctx.fillStyle = '#2b5c23'; // Zöld fű a pálya körül
     ctx.fillRect(0, 0, canvas.width, canvas.height); 
     
@@ -494,8 +484,6 @@ function gameLoop(timestamp) {
     ctx.translate(camX, camY);
 
     drawCircuit();
-    
-    // ÚJ: Szikrák és törmelék kirajzolása
     drawParticles(ctx, timeScale);
 
     for (let id in gameData) {
