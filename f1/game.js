@@ -5,12 +5,12 @@ window.addEventListener('resize', resize); resize();
 
 // Globális változók
 let track = [];
-const trackWidth = 400; // Kicsit szélesebb pálya
+const trackWidth = 650; // KISZÉLESÍTVE!
 let gameActive = false;
 const MAX_PLAYERS = 10;
 
-// Saját adatok
-const player = { x: 0, y: 0, angle: 0, speed: 0, maxSpeed: 40, accel: 0.6, friction: 0.98, turnSpeed: 0.03, color: '#e10600', name: 'Pilóta' };
+// Saját adatok (Több tapadás, jobb gyorsulás, erősebb kormány)
+const player = { x: 0, y: 0, angle: 0, speed: 0, maxSpeed: 45, accel: 1.2, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta' };
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
 window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
@@ -19,7 +19,7 @@ window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.code)) keys[e.
 // Hálózat
 const prefix = "F1PRO-X-";
 const genCode = () => Math.random().toString(36).substring(2, 7).toUpperCase();
-let myId = genCode();
+let myId = genCode(); // Fix ID generálása induláskor
 let peer = null, isHost = false, hostConn = null;
 let clients = {}, gameData = {};
 
@@ -31,9 +31,8 @@ async function loadTrack() {
     try {
         const response = await fetch('track.json');
         track = await response.json();
-        console.log("Pálya betöltve:", track.length, "pont");
     } catch (error) {
-        alert("Hiba a pálya betöltésekor! Biztosan lokális szerverről futtatod a játékot? (Böngésző letiltja a file:// protokolt)");
+        alert("Hiba a pálya betöltésekor!");
         console.error(error);
     }
 }
@@ -55,8 +54,9 @@ function initAudio() {
 function updateAudio(speed) {
     if(!audioCtx) return;
     let absSpeed = Math.abs(speed);
-    engineOsc.frequency.setTargetAtTime(40 + absSpeed * 4, audioCtx.currentTime, 0.1);
-    engineGain.gain.setTargetAtTime(absSpeed > 1 ? 0.08 : 0.02, audioCtx.currentTime, 0.1);
+    engineOsc.frequency.setTargetAtTime(40 + absSpeed * 3, audioCtx.currentTime, 0.1);
+    // HANGOSÍTÁS LEHÚZVA:
+    engineGain.gain.setTargetAtTime(absSpeed > 1 ? 0.02 : 0.005, audioCtx.currentTime, 0.1);
 }
 
 function playCrashSound() {
@@ -66,8 +66,9 @@ function playCrashSound() {
     osc.type = 'square';
     osc.frequency.setValueAtTime(150, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    // CSATTANÁS HALKÍTVA:
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
@@ -85,7 +86,6 @@ function initPeer(id) {
 
         c.on('open', () => {
             clients[c.peer] = c;
-            // Kezdeti dummy adatok, amíg nem küldi el a sajátját
             gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...' };
             updatePlayerCount();
             if(gameActive) c.send({ type: 'start' });
@@ -114,7 +114,6 @@ function updatePlayerCount() {
     if(!gameActive) document.getElementById('playerCount').innerText = `Játékosok: ${Object.keys(clients).length + 1}/${MAX_PLAYERS}`;
 }
 
-// SETUP gombok
 function setupPlayerInputs() {
     player.name = document.getElementById('playerName').value.trim() || 'Pilóta';
     player.color = document.getElementById('playerColor').value;
@@ -146,13 +145,12 @@ document.getElementById('btnJoin').onclick = async () => {
     
     isHost = false; 
     document.getElementById('status').innerText = "Csatlakozás szerverhez...";
-    initPeer(genCode());
+    initPeer(myId); // BUG JAVÍTVA: Itt véletlenül új ID-t kapott régen, most már a sajátját használja!
 
     setTimeout(() => { 
         hostConn = peer.connect(prefix + code); 
         hostConn.on('open', () => { 
             document.getElementById('status').innerText = "Várakozás a Hostra..."; 
-            // Amint csatlakozunk, küldjük a nevet/színt
             hostConn.send({ type: 'join', name: player.name, color: player.color });
         });
         hostConn.on('data', (data) => {
@@ -166,12 +164,13 @@ document.getElementById('btnJoin').onclick = async () => {
     }, 1000);
 };
 
+let lastTime = 0;
+
 function startGame() {
     document.getElementById('ui-layer').style.display = 'none';
     document.getElementById('hud').style.display = 'block';
     gameActive = true;
     
-    // Kezdőpozíció
     player.x = track[0].x;
     player.y = track[0].y;
     
@@ -185,10 +184,13 @@ function startGame() {
             if (hostConn && hostConn.open) hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
         }, 50);
     }
-    requestAnimationFrame(gameLoop);
+    
+    requestAnimationFrame((timestamp) => {
+        lastTime = timestamp;
+        gameLoop(timestamp);
+    });
 }
 
-// Fizika
 function checkWallCollision(p) {
     let minDist = Infinity;
     let collisionNormal = null;
@@ -203,61 +205,66 @@ function checkWallCollision(p) {
         let dist = Math.sqrt(dx*dx + dy*dy);
         if (dist < minDist) { minDist = dist; collisionNormal = { x: -dx/dist, y: -dy/dist }; }
     }
-    if (minDist > (trackWidth / 2) - 20) return collisionNormal;
+    // Levonjuk a kocsi méretét a számításból
+    if (minDist > (trackWidth / 2) - 30) return collisionNormal;
     return null;
 }
 
-function updatePhysics() {
-    if (keys.ArrowUp) player.speed += player.accel;
-    if (keys.ArrowDown) player.speed -= player.accel * 1.5;
-    player.speed *= player.friction;
+// FIZIKA FRISSÍTÉS - DeltaTime támogatással (ts)
+function updatePhysics(ts) {
+    if (keys.ArrowUp) player.speed += player.accel * ts;
+    if (keys.ArrowDown) player.speed -= player.accel * 3 * ts; // Jóval erősebb fék!
 
-    if (Math.abs(player.speed) > 1) {
+    // Sebességfüggetlen légellenállás/súrlódás
+    player.speed *= Math.pow(player.friction, ts);
+
+    if (Math.abs(player.speed) > 0.5) {
         let turnDir = player.speed > 0 ? 1 : -1;
-        let currentTurnSpeed = player.turnSpeed * (1 - (Math.abs(player.speed) / player.maxSpeed) * 0.2);
-        if (keys.ArrowLeft) player.angle -= currentTurnSpeed * turnDir;
-        if (keys.ArrowRight) player.angle += currentTurnSpeed * turnDir;
+        // Kicsit elnézőbb a kanyarodás nagy tempónál
+        let currentTurnSpeed = player.turnSpeed * (1 - (Math.abs(player.speed) / player.maxSpeed) * 0.1);
+        if (keys.ArrowLeft) player.angle -= currentTurnSpeed * turnDir * ts;
+        if (keys.ArrowRight) player.angle += currentTurnSpeed * turnDir * ts;
     }
 
-    player.x += Math.cos(player.angle) * player.speed;
-    player.y += Math.sin(player.angle) * player.speed;
+    player.x += Math.cos(player.angle) * player.speed * ts;
+    player.y += Math.sin(player.angle) * player.speed * ts;
 
     let hitNormal = checkWallCollision(player);
     if (hitNormal) {
-        player.speed *= 0.3; 
-        player.x += hitNormal.x * 10; player.y += hitNormal.y * 10;
+        player.speed *= 0.3; // 70% sebességvesztés
+        player.x += hitNormal.x * 15; // Nagyobb lökés befelé, hogy ne akadjon a falba
+        player.y += hitNormal.y * 15;
         if (Math.abs(player.speed) > 2 && Date.now() - lastCrashTime > 300) { playCrashSound(); lastCrashTime = Date.now(); }
     }
 
     if (player.speed > player.maxSpeed) player.speed = player.maxSpeed;
-    if (player.speed < -player.maxSpeed/3) player.speed = -player.maxSpeed/3;
+    if (player.speed < -player.maxSpeed/2) player.speed = -player.maxSpeed/2;
     updateAudio(player.speed);
 }
 
-// Render
+// Renderelés
 function drawF1Car(ctx, x, y, angle, color, name) {
     ctx.save();
     ctx.translate(x, y);
     
-    // Névtábla rajzolása elforgatás nélkül (hogy mindig vízszintes és olvasható maradjon)
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.shadowBlur = 4;
     ctx.shadowColor = '#000';
     ctx.fillText(name, 0, -40);
-    ctx.shadowBlur = 0; // Árnyék reset a kocsinak
+    ctx.shadowBlur = 0; 
     
     ctx.rotate(angle);
-    ctx.fillStyle = '#111'; // Kerekek
+    ctx.fillStyle = '#111'; 
     ctx.fillRect(15, -22, 15, 8); ctx.fillRect(15, 14, 15, 8); 
     ctx.fillRect(-25, -22, 15, 10); ctx.fillRect(-25, 12, 15, 10);
-    ctx.fillStyle = color; // Kasztni
+    ctx.fillStyle = color; 
     ctx.beginPath(); ctx.moveTo(35, -5); ctx.lineTo(35, 5); ctx.lineTo(10, 10); ctx.lineTo(-20, 12); 
     ctx.lineTo(-35, 8); ctx.lineTo(-35, -8); ctx.lineTo(-20, -12); ctx.lineTo(10, -10); ctx.fill();
-    ctx.fillStyle = '#222'; // Szárnyak
+    ctx.fillStyle = '#222'; 
     ctx.fillRect(25, -18, 8, 36); ctx.fillRect(-40, -18, 10, 36);
-    ctx.fillStyle = '#000'; // Bukósisak
+    ctx.fillStyle = '#000'; 
     ctx.beginPath(); ctx.arc(-5, 0, 6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 }
@@ -290,10 +297,18 @@ function drawCircuit() {
     ctx.restore();
 }
 
-function gameLoop() {
+function gameLoop(timestamp) {
     if (!gameActive) return;
     requestAnimationFrame(gameLoop);
-    updatePhysics();
+    
+    // FPS függetlenítés (DeltaTime számolás)
+    let dt = timestamp - lastTime;
+    if (dt > 100) dt = 16.66; // Ha tálcára rakod a böngészőt, ne teleportáljon a kocsi a falon át
+    lastTime = timestamp;
+    let timeScale = dt / 16.666; // 60 FPS-hez viszonyítva
+
+    updatePhysics(timeScale);
+    
     document.getElementById('speedVal').innerText = Math.abs(Math.round(player.speed * 10));
 
     ctx.fillStyle = '#2b5c23'; 
