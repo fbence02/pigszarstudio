@@ -1,49 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="hu">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>F1 P2P RACING - CUSTOM EDITION</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-</head>
-<body>
-
+  </head>
+  <body>
     <div id="hud">
-        Sebesség: <span id="speedVal">0</span> km/h<br>
-        <span style="font-size: 18px; color: #aaa;">Max 10 játékos</span>
+      Sebesség: <span id="speedVal">0</span> km/h<br />
+      <span style="font-size: 18px; color: #aaa">Max 10 játékos</span>
     </div>
 
     <div id="ui-layer">
-        <div class="menu" id="mainMenu">
-            <h1>F1 MULTIPLAYER</h1>
-            
-            <div class="setup-box">
-                <input type="text" id="playerName" placeholder="JÁTÉKOSNÉV" maxlength="12" value="Pilóta">
-                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
-                    <span style="margin-right: 10px; font-weight: bold; color: #fff;">AUTÓ SZÍNE:</span>
-                    <input type="color" id="playerColor" value="#e10600">
-                </div>
-            </div>
+      <div class="menu" id="mainMenu">
+        <h1>F1 MULTIPLAYER</h1>
 
-            <button id="btnHost">Szerver Indítása (Host)</button>
-            <div class="divider">VAGY CSATLAKOZZ</div>
-            <input type="text" id="joinCode" maxlength="5" placeholder="5 BETŰS KÓD">
-            <br>
-            <button id="btnJoin" class="secondary-btn">Csatlakozás</button>
-            <div id="status" class="status-msg"></div>
+        <div class="setup-box">
+          <input
+            type="text"
+            id="playerName"
+            placeholder="JÁTÉKOSNÉV"
+            maxlength="12"
+            value="Pilóta"
+          />
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 15px;
+            "
+          >
+            <span style="margin-right: 10px; font-weight: bold; color: #fff"
+              >AUTÓ SZÍNE:</span
+            >
+            <input type="color" id="playerColor" value="#e10600" />
+          </div>
         </div>
 
-        <div class="menu" id="hostMenu" style="display: none;">
-            <h1>BOXUTCA...</h1>
-            <p>Küldd el a kódot a többieknek:</p>
-            <div class="code-display" id="myCode">---</div>
-            <div class="player-count" id="playerCount">Játékosok: 1/10</div>
-            <button id="btnStartRace" style="margin-top: 20px;">Verseny Indítása</button>
-        </div>
+        <button id="btnHost">Szerver Indítása (Host)</button>
+        <div class="divider">VAGY CSATLAKOZZ</div>
+        <input
+          type="text"
+          id="joinCode"
+          maxlength="5"
+          placeholder="5 BETŰS KÓD"
+        />
+        <br />
+        <button id="btnJoin" class="secondary-btn">Csatlakozás</button>
+        <div id="status" class="status-msg"></div>
+      </div>
+
+      <div class="menu" id="hostMenu" style="display: none">
+        <h1>BOXUTCA...</h1>
+        <p>Küldd el a kódot a többieknek:</p>
+        <div class="code-display" id="myCode">---</div>
+        <div class="player-count" id="playerCount">Játékosok: 1/10</div>
+        <button id="btnStartRace" style="margin-top: 20px">
+          Verseny Indítása
+        </button>
+      </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
+    <script src="fps.js"></script>
+
     <script src="game.js"></script>
-</body>
+  </body>
 </html>
