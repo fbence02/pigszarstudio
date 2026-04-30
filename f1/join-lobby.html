@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>F1 P2P RACING - JOIN LOBBY</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  </head>
+  <body>
+    <div id="ui-layer">
+      <div class="menu" id="joinMenu" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div style="text-align: left;">
+          <a href="index.html" style="color: #aaa; text-decoration: none; font-size: 12px;">← Vissza</a>
+        </div>
+        
+        <h1 id="screenTitle">CSATLAKOZÁS</h1>
+
+        <div id="joinInputScreen">
+          <div class="setup-box">
+            <label style="color: #aaa; display: block; margin-bottom: 5px; font-size: 12px;">5 BETŰS KÓD:</label>
+            <input type="text" id="joinCode" placeholder="00000" maxlength="5" style="text-transform: uppercase; font-size: 32px; letter-spacing: 5px; text-align: center;" />
+
+            <label style="color: #aaa; display: block; margin: 20px 0 5px 0; font-size: 12px;">FELHASZNÁLÓNÉV:</label>
+            <input type="text" id="playerName" placeholder="Vezetőnév" maxlength="12" value="Pilóta" />
+
+            <label style="color: #aaa; display: block; margin: 15px 0 5px 0; font-size: 12px;">AUTÓ SZÍNE:</label>
+            <div style="display: flex; align-items: center; justify-content: center;">
+              <input type="color" id="playerColor" value="#e10600" style="width: 80px; height: 50px;" />
+            </div>
+          </div>
+
+          <button id="btnConnect" style="margin-top: 20px;">Csatlakozás</button>
+          <div id="statusJoin" class="status-msg"></div>
+        </div>
+
+        <div id="lobbyScreen" style="display: none;">
+          <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #333;">
+            <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px;">HOST:</p>
+            <div style="font-size: 20px; font-weight: bold; color: #0f0; margin-bottom: 15px;">👑 <span id="hostNameDisplay">---</span></div>
+
+            <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px;">PÁLYA:</p>
+            <div style="font-size: 18px; color: #0ff; margin-bottom: 15px;" id="trackNameDisplay">---</div>
+
+            <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px;">KÖRÖK:</p>
+            <div style="font-size: 24px; font-weight: bold; color: #0f0;" id="lapCountDisplay">---</div>
+          </div>
+
+          <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #333; max-height: 250px; overflow-y: auto;">
+            <p style="color: #aaa; margin: 0 0 15px 0; font-size: 12px;">JÁTÉKOSOK: <span id="playerCountDisplay">1/10</span></p>
+            <div id="playersList" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Dynamic player list -->
+            </div>
+          </div>
+
+          <button id="btnLeave" class="secondary-btn" style="margin-top: 20px;">Kilépés</button>
+          <div id="statusLobby" class="status-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const prefix = "F1PRO-X-";
+      const genCode = () => Math.random().toString(36).substring(2, 7).toUpperCase();
+      let myId = genCode();
+      let peer = null;
+      let hostConn = null;
+      let playerName = 'Pilóta';
+      let playerColor = '#e10600';
+      let currentLobbyState = null;
+
+      function initPeer() {
+        peer = new Peer(prefix + myId);
+        peer.on('open', () => {
+          // Ready to connect
+        });
+        peer.on('error', (err) => {
+          document.getElementById('statusJoin').innerText = 'Hiba: ' + err.type;
+        });
+      }
+
+      document.getElementById('playerName').addEventListener('input', (e) => {
+        playerName = e.target.value.trim() || 'Pilóta';
+      });
+
+      document.getElementById('playerColor').addEventListener('input', (e) => {
+        playerColor = e.target.value;
+      });
+
+      document.getElementById('btnConnect').onclick = () => {
+        const code = document.getElementById('joinCode').value.toUpperCase().trim();
+        if (code.length !== 5) {
+          document.getElementById('statusJoin').innerText = 'Hibás kód! (5 betű szükséges)';
+          return;
+        }
+
+        document.getElementById('statusJoin').innerText = 'Csatlakozás...';
+
+        hostConn = peer.connect(prefix + code);
+
+        hostConn.on('open', () => {
+          hostConn.send({ type: 'join', name: playerName, color: playerColor });
+          document.getElementById('statusJoin').innerText = '';
+          showLobbyScreen();
+        });
+
+        hostConn.on('data', (data) => {
+          if (data.type === 'full') {
+            document.getElementById('statusJoin').innerText = 'A szerver tele van!';
+            hostConn.close();
+          } else if (data.type === 'lobbyState') {
+            currentLobbyState = data;
+            updateLobbyDisplay();
+          } else if (data.type === 'kicked') {
+            document.getElementById('statusLobby').innerText = 'Eltávolítottak a játékból!';
+            setTimeout(() => {
+              hostConn.close();
+              window.location.href = './join-lobby.html';
+            }, 2000);
+          } else if (data.type === 'start') {
+            startGame(data);
+          }
+        });
+
+        hostConn.on('close', () => {
+          document.getElementById('statusLobby').innerText = 'Kapcsolat lezárva!';
+        });
+
+        hostConn.on('error', (err) => {
+          document.getElementById('statusJoin').innerText = 'Csatlakozási hiba: ' + err.type;
+        });
+      };
+
+      function showLobbyScreen() {
+        document.getElementById('joinInputScreen').style.display = 'none';
+        document.getElementById('lobbyScreen').style.display = 'block';
+        document.getElementById('screenTitle').innerText = 'SZOBA';
+      }
+
+      function updateLobbyDisplay() {
+        if (!currentLobbyState) return;
+
+        document.getElementById('hostNameDisplay').innerText = currentLobbyState.hostName || 'Host';
+        document.getElementById('trackNameDisplay').innerText = currentLobbyState.track ? currentLobbyState.track.name : '---';
+        document.getElementById('lapCountDisplay').innerText = currentLobbyState.laps + ' kör';
+
+        // Update player list
+        const list = document.getElementById('playersList');
+        list.innerHTML = '<div style="background: #222; padding: 10px; border-radius: 5px; display: flex; align-items: center; gap: 8px;"><span style="color: #0f0;">👑 ' + (currentLobbyState.hostName || 'Host') + '</span></div>';
+
+        if (currentLobbyState.players) {
+          currentLobbyState.players.forEach(player => {
+            const div = document.createElement('div');
+            div.style.cssText = 'background: #222; padding: 10px; border-radius: 5px; display: flex; align-items: center; gap: 8px;';
+            div.innerHTML = `
+              <span style="width: 15px; height: 15px; background: ${player.color}; border-radius: 3px;"></span>
+              <span style="color: #fff;">${player.name}</span>
+            `;
+            list.appendChild(div);
+          });
+        }
+
+        const playerCount = 1 + (currentLobbyState.players ? currentLobbyState.players.length : 0);
+        document.getElementById('playerCountDisplay').innerText = `${playerCount}/10`;
+      }
+
+      function startGame(data) {
+        const gameData = {
+          track: data.track || currentLobbyState.track,
+          laps: data.laps || currentLobbyState.laps,
+          hostName: data.hostName || currentLobbyState.hostName,
+          hostId: data.hostId,
+          isHost: false,
+          playerName: playerName,
+          playerColor: playerColor
+        };
+
+        sessionStorage.setItem('gameData', JSON.stringify(gameData));
+        sessionStorage.setItem('peerId', myId);
+        sessionStorage.setItem('hostConn', JSON.stringify({
+          peer: hostConn.peer,
+          open: hostConn.open
+        }));
+        window.location.href = './game.html';
+      }
+
+      document.getElementById('btnLeave').onclick = () => {
+        if (hostConn) hostConn.close();
+        if (peer) peer.destroy();
+        window.location.href = './index.html';
+      };
+
+      // Initialize
+      initPeer();
+    </script>
+  </body>
+</html>

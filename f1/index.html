@@ -4,71 +4,47 @@
     <meta charset="UTF-8" />
     <title>F1 P2P RACING - CUSTOM EDITION</title>
     <link rel="stylesheet" href="style.css" />
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   </head>
   <body>
-    <div id="hud">
-      Sebesség: <span id="speedVal">0</span> km/h<br />
-      <span style="font-size: 18px; color: #aaa">Max 10 játékos</span>
-    </div>
-
     <div id="ui-layer">
       <div class="menu" id="mainMenu">
         <h1>F1 MULTIPLAYER</h1>
+        <p style="margin-bottom: 30px; color: #aaa;">Válaszd meg az opciót!</p>
 
-        <div class="setup-box">
-          <input
-            type="text"
-            id="playerName"
-            placeholder="JÁTÉKOSNÉV"
-            maxlength="12"
-            value="Pilóta"
-          />
-          <div
-            style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              margin-bottom: 15px;
-            "
-          >
-            <span style="margin-right: 10px; font-weight: bold; color: #fff"
-              >AUTÓ SZÍNE:</span
-            >
-            <input type="color" id="playerColor" value="#e10600" />
-          </div>
+        <button id="btnCreateLobby" class="primary-btn">Szerver Indítása (Host)</button>
+        <div class="divider">VAGY</div>
+        <button id="btnJoinLobby" class="secondary-btn">Csatlakozás Szobához</button>
+
+        <div style="margin-top: 40px; border-top: 1px solid #444; padding-top: 20px;">
+          <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Track Szerkesztés</p>
+          <button id="btnEditor" class="secondary-btn" style="margin-bottom: 10px; font-size: 14px;">
+            Track Editor v1
+          </button>
+          <button id="btnTrackEditor" class="secondary-btn" style="font-size: 14px;">
+            Track Editor v2
+          </button>
         </div>
 
-        <button id="btnHost">Szerver Indítása (Host)</button>
-        <div class="divider">VAGY CSATLAKOZZ</div>
-        <input
-          type="text"
-          id="joinCode"
-          maxlength="5"
-          placeholder="5 BETŰS KÓD"
-        />
-        <br />
-        <button id="btnJoin" class="secondary-btn">Csatlakozás</button>
-        <button id="btnEditor" class="secondary-btn" style="margin-top: 20px">
-          Track Editor
-        </button>
-        <button id="btnTrackEditor">Track editor 2.0</button>
         <div id="status" class="status-msg"></div>
-      </div>
-
-      <div class="menu" id="hostMenu" style="display: none">
-        <h1>BOXUTCA...</h1>
-        <p>Küldd el a kódot a többieknek:</p>
-        <div class="code-display" id="myCode">---</div>
-        <div class="player-count" id="playerCount">Játékosok: 1/10</div>
-        <button id="btnStartRace" style="margin-top: 20px">
-          Verseny Indítása
-        </button>
       </div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <script>
+      document.getElementById('btnCreateLobby').onclick = () => {
+        window.location.href = './lobby.html';
+      };
 
-    <script src="game.js"></script>
+      document.getElementById('btnJoinLobby').onclick = () => {
+        window.location.href = './join-lobby.html';
+      };
+
+      document.getElementById('btnEditor').onclick = () => {
+        window.location.href = './editor.html';
+      };
+
+      document.getElementById('btnTrackEditor').onclick = () => {
+        window.location.href = './trackeditor.html';
+      };
+    </script>
   </body>
 </html>

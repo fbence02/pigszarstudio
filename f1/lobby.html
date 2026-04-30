@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>F1 P2P RACING - HOST LOBBY</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  </head>
+  <body>
+    <div id="ui-layer">
+      <div class="menu" id="lobbyMenu" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div style="text-align: left;">
+          <a href="index.html" style="color: #aaa; text-decoration: none; font-size: 12px;">← Vissza</a>
+        </div>
+        
+        <h1>BOXUTCA (HOST)</h1>
+
+        <div class="setup-box">
+          <label style="color: #aaa; display: block; margin-bottom: 5px; font-size: 12px;">FELHASZNÁLÓNÉV:</label>
+          <input type="text" id="hostName" placeholder="Vezetőnév" maxlength="12" value="Főnök" />
+
+          <label style="color: #aaa; display: block; margin: 15px 0 5px 0; font-size: 12px;">PÁLYA KIVÁLASZTÁSA:</label>
+          <select id="trackSelect" style="
+            background: #000; border: 2px solid #444; color: #fff; 
+            padding: 12px; font-size: 16px; width: 100%; text-transform: uppercase; 
+            outline: none; border-radius: 5px; cursor: pointer; text-align: center;
+          ">
+            <option value="">Betöltés...</option>
+          </select>
+
+          <label style="color: #aaa; display: block; margin: 15px 0 5px 0; font-size: 12px;">KÖRÖK SZÁMA:</label>
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <button id="btnDecreaseLaps" style="width: 50px; padding: 10px; margin: 0 5px;">−</button>
+            <span id="lapCount" style="font-size: 28px; font-weight: bold; color: #0f0; min-width: 60px; text-align: center;">3</span>
+            <button id="btnIncreaseLaps" style="width: 50px; padding: 10px; margin: 0 5px;">+</button>
+          </div>
+        </div>
+
+        <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #333;">
+          <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px;">SZERVER KÓD:</p>
+          <div class="code-display" id="hostCode" style="cursor: pointer; user-select: all;">---</div>
+          <p style="color: #666; text-align: center; font-size: 12px; margin: 10px 0 0 0;">Kattints a másoláshoz</p>
+        </div>
+
+        <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #333; max-height: 250px; overflow-y: auto;">
+          <p style="color: #aaa; margin: 0 0 15px 0; font-size: 12px;">CSATLAKOZOTT JÁTÉKOSOK: <span id="playerCountDisplay">1/10</span></p>
+          <div id="playersList" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #0f0;">👑 Te (Host)</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="btnStartRace" style="margin-top: 20px; width: 100%;">Verseny Indítása</button>
+        <button id="btnBackLobby" class="secondary-btn" style="margin-top: 10px;">Kilépés</button>
+
+        <div id="statusLobby" class="status-msg"></div>
+      </div>
+    </div>
+
+    <script>
+      const prefix = "F1PRO-X-";
+      const genCode = () => Math.random().toString(36).substring(2, 7).toUpperCase();
+      let myId = genCode();
+      let peer = null;
+      let clients = {};
+      let selectedTrack = null;
+      let lapCount = 3;
+      let hostName = 'Főnök';
+      let availableTracks = [];
+
+      // Pályák betöltése
+      async function loadAvailableTracks() {
+        try {
+          const tracks = ['track-1.json', 'track-spa.json', 'track_data.json'];
+          for (const trackFile of tracks) {
+            try {
+              const response = await fetch(`./tracks/${trackFile}`);
+              const data = await response.json();
+              availableTracks.push({
+                file: trackFile,
+                name: data.name || trackFile.replace('.json', ''),
+                laps: data.laps || 3,
+                data: data
+              });
+            } catch (e) {
+              console.error(`Hiba a ${trackFile} betöltésekor:`, e);
+            }
+          }
+
+          // Select feltöltése
+          const select = document.getElementById('trackSelect');
+          select.innerHTML = '';
+          availableTracks.forEach((track, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `${track.name} (${track.laps} kör)`;
+            select.appendChild(option);
+          });
+
+          if (availableTracks.length > 0) {
+            select.value = 0;
+            selectTrack(0);
+          }
+        } catch (error) {
+          console.error('Hiba a pályák betöltésekor:', error);
+          document.getElementById('statusLobby').innerText = 'Hiba a pályák betöltésekor!';
+        }
+      }
+
+      function selectTrack(index) {
+        selectedTrack = availableTracks[index];
+        lapCount = selectedTrack.laps;
+        document.getElementById('lapCount').innerText = lapCount;
+        updateLapDisplay();
+      }
+
+      document.getElementById('trackSelect').addEventListener('change', (e) => {
+        selectTrack(parseInt(e.target.value));
+      });
+
+      document.getElementById('hostName').addEventListener('input', (e) => {
+        hostName = e.target.value.trim() || 'Főnök';
+      });
+
+      document.getElementById('btnIncreaseLaps').onclick = () => {
+        lapCount = Math.min(10, lapCount + 1);
+        updateLapDisplay();
+      };
+
+      document.getElementById('btnDecreaseLaps').onclick = () => {
+        lapCount = Math.max(1, lapCount - 1);
+        updateLapDisplay();
+      };
+
+      function updateLapDisplay() {
+        document.getElementById('lapCount').innerText = lapCount;
+      }
+
+      document.getElementById('hostCode').addEventListener('click', () => {
+        const code = document.getElementById('hostCode').innerText;
+        if (code !== '---') {
+          navigator.clipboard.writeText(code).then(() => {
+            document.getElementById('statusLobby').innerText = 'Kód másolva a vágólapra!';
+            setTimeout(() => {
+              document.getElementById('statusLobby').innerText = '';
+            }, 2000);
+          });
+        }
+      });
+
+      function initPeer() {
+        peer = new Peer(prefix + myId);
+
+        peer.on('open', (id) => {
+          document.getElementById('hostCode').innerText = myId;
+        });
+
+        peer.on('connection', (c) => {
+          if (Object.keys(clients).length >= 9) {
+            c.on('open', () => {
+              c.send({ type: 'full' });
+              setTimeout(() => c.close(), 500);
+            });
+            return;
+          }
+
+          c.on('open', () => {
+            clients[c.peer] = {
+              conn: c,
+              name: 'Ismeretlen',
+              color: '#fff',
+              id: c.peer
+            };
+            updatePlayersList();
+            c.send({
+              type: 'lobbyState',
+              track: selectedTrack,
+              laps: lapCount,
+              hostName: hostName
+            });
+          });
+
+          c.on('data', (data) => {
+            if (data.type === 'join' && clients[c.peer]) {
+              clients[c.peer].name = data.name;
+              clients[c.peer].color = data.color;
+              updatePlayersList();
+              broadcastLobbyState();
+            }
+          });
+
+          c.on('close', () => {
+            delete clients[c.peer];
+            updatePlayersList();
+          });
+        });
+
+        peer.on('error', (err) => {
+          document.getElementById('statusLobby').innerText = 'Hiba: ' + err.type;
+        });
+      }
+
+      function updatePlayersList() {
+        const list = document.getElementById('playersList');
+        list.innerHTML = '<div style="background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;"><span style="color: #0f0;">👑 ' + hostName + ' (Te)</span></div>';
+
+        for (let peerId in clients) {
+          const player = clients[peerId];
+          const div = document.createElement('div');
+          div.style.cssText = 'background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;';
+          div.innerHTML = `
+            <span style="color: #fff; display: flex; align-items: center; gap: 8px;">
+              <span style="width: 15px; height: 15px; background: ${player.color}; border-radius: 3px;"></span>
+              ${player.name}
+            </span>
+            <button style="width: auto; padding: 5px 10px; font-size: 12px; background: #8b0000; margin: 0;" onclick="kickPlayer('${peerId}')">Eltávolítás</button>
+          `;
+          list.appendChild(div);
+        }
+
+        const playerCount = Object.keys(clients).length + 1;
+        document.getElementById('playerCountDisplay').innerText = `${playerCount}/10`;
+      }
+
+      function kickPlayer(peerId) {
+        if (clients[peerId]) {
+          clients[peerId].conn.send({ type: 'kicked' });
+          setTimeout(() => {
+            clients[peerId].conn.close();
+            delete clients[peerId];
+            updatePlayersList();
+          }, 100);
+        }
+      }
+
+      function broadcastLobbyState() {
+        for (let peerId in clients) {
+          clients[peerId].conn.send({
+            type: 'lobbyState',
+            track: selectedTrack,
+            laps: lapCount,
+            hostName: hostName,
+            players: Object.values(clients).map(p => ({ name: p.name, color: p.color }))
+          });
+        }
+      }
+
+      document.getElementById('btnStartRace').onclick = () => {
+        if (!selectedTrack) {
+          document.getElementById('statusLobby').innerText = 'Válassz egy pályát!';
+          return;
+        }
+
+        const gameData = {
+          track: selectedTrack,
+          laps: lapCount,
+          hostName: hostName,
+          hostId: myId,
+          isHost: true
+        };
+
+        sessionStorage.setItem('gameData', JSON.stringify(gameData));
+        sessionStorage.setItem('peerId', myId);
+        sessionStorage.setItem('hostConn', 'null');
+        window.location.href = './game.html';
+      };
+
+      document.getElementById('btnBackLobby').onclick = () => {
+        if (peer) peer.destroy();
+        window.location.href = './index.html';
+      };
+
+      // Inicializálás
+      loadAvailableTracks();
+      initPeer();
+    </script>
+  </body>
+</html>
