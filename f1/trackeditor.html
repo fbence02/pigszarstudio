@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>F1 Track Editor - Open/Closed Fix</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #2b5c23;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      canvas {
+        display: block;
+        cursor: crosshair;
+      }
+      #ui-panel {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(17, 17, 17, 0.85);
+        color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 250px;
+        z-index: 10;
+      }
+      .ui-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      label {
+        font-size: 14px;
+        color: #ccc;
+      }
+      input[type="number"] {
+        padding: 8px;
+        border: 1px solid #444;
+        background: #222;
+        color: #fff;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      button {
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      #btn-copy {
+        background: #c4aa62;
+        color: #111;
+      }
+      #btn-copy:hover {
+        background: #dcc482;
+      }
+      #btn-download {
+        background: #e10600;
+        color: #fff;
+      }
+      #btn-download:hover {
+        background: #ff1a12;
+      }
+      #btn-clear {
+        background: #444;
+        color: #fff;
+        margin-top: 10px;
+      }
+      #btn-clear:hover {
+        background: #666;
+      }
+
+      .instructions {
+        font-size: 12px;
+        color: #aaa;
+        line-height: 1.5;
+        margin-top: 10px;
+        border-top: 1px solid #444;
+        padding-top: 10px;
+      }
+      .instructions strong {
+        color: #fff;
+      }
+
+      /* Állapotjelző */
+      #status-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+      }
+      .status-open {
+        background: #ff9800;
+        color: #fff;
+      }
+      .status-closed {
+        background: #4caf50;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui-panel">
+      <div id="status-badge" class="status-open">Pálya: Nyitott</div>
+      <div class="ui-group">
+        <label for="laps">Körök száma (Laps):</label>
+        <input type="number" id="laps" value="3" min="1" />
+      </div>
+      <button id="btn-copy">JSON Másolása</button>
+      <button id="btn-download">JSON Letöltése</button>
+      <button id="btn-clear">Pálya Törlése</button>
+
+      <div class="instructions">
+        <strong>Bal klikk:</strong> Pont lerakása<br />
+        <strong>Bal klikk az 1. pontra:</strong> Kör bezárása!<br />
+        <strong>Bal klikk nyomva:</strong> Pont mozgatása<br />
+        <strong>Jobb klikk:</strong> Pont törlése<br />
+        <strong>Középső/Jobb húzás:</strong> Pásztázás (Pan)<br />
+        <strong>Görgő:</strong> Zoomolás
+      </div>
+    </div>
+
+    <canvas id="trackCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("trackCanvas");
+      const ctx = canvas.getContext("2d");
+      const statusBadge = document.getElementById("status-badge");
+
+      // Pálya beállítások
+      const trackWidth = 650;
+      let points = [];
+      let isClosed = false; // ÚJ: Zárt-e a kör?
+
+      // Kamera beállítások
+      let camera = { x: 2000, y: 1000, zoom: 0.05 };
+
+      // Interakciós állapotok
+      let isDragging = false;
+      let isPanning = false;
+      let dragIndex = -1;
+      let lastMousePos = { x: 0, y: 0 };
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        render();
+      }
+      window.addEventListener("resize", resizeCanvas);
+
+      function updateUIStatus() {
+        if (isClosed) {
+          statusBadge.textContent = "Pálya: Zárt (Kész)";
+          statusBadge.className = "status-closed";
+        } else {
+          statusBadge.textContent = "Pálya: Építés alatt (Nyitott)";
+          statusBadge.className = "status-open";
+        }
+      }
+
+      // --- ALGORITMUSOK ÉS LOGIKA ---
+
+      function generateSmoothCurve(path, iterations = 5, closed = true) {
+        if (path.length < 2) return path;
+        if (path.length < 3 && closed) return path;
+
+        let smoothed = [...path];
+        for (let iter = 0; iter < iterations; iter++) {
+          let newPath = [];
+
+          // Ha nyitott, rögzítjük az első pontot, hogy ne "másszon" el
+          if (!closed) newPath.push(smoothed[0]);
+
+          let len = closed ? smoothed.length : smoothed.length - 1;
+          for (let i = 0; i < len; i++) {
+            let p1 = smoothed[i];
+            let p2 = smoothed[(i + 1) % smoothed.length];
+            newPath.push({
+              x: p1.x * 0.75 + p2.x * 0.25,
+              y: p1.y * 0.75 + p2.y * 0.25,
+            });
+            newPath.push({
+              x: p1.x * 0.25 + p2.x * 0.75,
+              y: p1.y * 0.25 + p2.y * 0.75,
+            });
+          }
+
+          // Ha nyitott, rögzítjük az utolsó pontot is
+          if (!closed) newPath.push(smoothed[smoothed.length - 1]);
+
+          smoothed = newPath;
+        }
+        return smoothed;
+      }
+
+      // --- RAJZOLÁS (RENDER LAYERS) ---
+
+      function drawLayer(path, width, color, dash = [], closed = true) {
+        if (path.length < 2) return;
+
+        ctx.beginPath(); // JAVÍTVA: Itt hiányzott a "ctx."
+        ctx.moveTo(path[0].x, path[0].y);
+
+        for (let i = 1; i < path.length; i++) {
+          ctx.lineTo(path[i].x, path[i].y);
+        } // JAVÍTVA: Itt egy felesleges "ctx" volt a zárójel után
+
+        if (closed) ctx.closePath(); // Ez tünteti el a rést a vonal két vége között!
+
+        ctx.lineWidth = width;
+        ctx.strokeStyle = color;
+        ctx.setLineDash(dash);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function drawStartLine(p1, p2) {
+        if (!p1 || !p2) return;
+        ctx.save();
+        ctx.translate(p1.x, p1.y);
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        ctx.rotate(angle);
+
+        const cols = 4;
+        const rows = 12;
+        const squareSize = trackWidth / rows;
+        const lineThickness = squareSize * cols;
+
+        ctx.translate(-lineThickness / 2, -trackWidth / 2);
+
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            ctx.fillStyle = (c + r) % 2 === 0 ? "#fff" : "#111";
+            ctx.fillRect(
+              c * squareSize,
+              r * squareSize,
+              squareSize,
+              squareSize,
+            );
+          }
+        }
+        ctx.restore();
+      }
+
+      function render() {
+        updateUIStatus();
+        ctx.fillStyle = "#2b5c23";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(camera.zoom, camera.zoom);
+        ctx.translate(-camera.x, -camera.y);
+
+        const smoothedPath = generateSmoothCurve(points, 5, isClosed);
+
+        if (smoothedPath.length > 0) {
+          // Átadjuk az isClosed változót a rajzolónak
+          drawLayer(smoothedPath, trackWidth + 400, "#111", [], isClosed);
+          drawLayer(smoothedPath, trackWidth + 360, "#c4aa62", [], isClosed);
+          drawLayer(smoothedPath, trackWidth + 30, "#fff", [], isClosed);
+          drawLayer(
+            smoothedPath,
+            trackWidth + 30,
+            "#e10600",
+            [80, 80],
+            isClosed,
+          );
+          drawLayer(smoothedPath, trackWidth, "#444", [], isClosed);
+
+          // Rajtvonal csak zárt pályánál van értelme
+          if (isClosed && smoothedPath.length >= 2) {
+            drawStartLine(smoothedPath[0], smoothedPath[1]);
+          }
+        }
+
+        ctx.fillStyle = "#00ff00";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 10 / camera.zoom;
+
+        points.forEach((p, index) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 40 / camera.zoom, 0, Math.PI * 2);
+
+          // Az 1-es pont (kezdőpont) kiemelése, ha a pálya még nyitott
+          if (index === 0 && !isClosed) {
+            ctx.fillStyle = "#ff9800"; // Narancssárga figyelemfelhívás
+          } else {
+            ctx.fillStyle = "#00ff00";
+          }
+
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = "#000";
+          ctx.font = `bold ${40 / camera.zoom}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(index + 1, p.x, p.y);
+        });
+
+        ctx.restore();
+      }
+
+      // --- INTERAKCIÓK ---
+
+      function getMouseWorldCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        return {
+          x: (mouseX - canvas.width / 2) / camera.zoom + camera.x,
+          y: (mouseY - canvas.height / 2) / camera.zoom + camera.y,
+        };
+      }
+
+      function getHoveredPointIndex(worldCoords) {
+        const hitRadius = 50 / camera.zoom;
+        for (let i = points.length - 1; i >= 0; i--) {
+          const dist = Math.hypot(
+            points[i].x - worldCoords.x,
+            points[i].y - worldCoords.y,
+          );
+          if (dist <= hitRadius) return i;
+        }
+        return -1;
+      }
+
+      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      canvas.addEventListener("mousedown", (e) => {
+        const worldCoords = getMouseWorldCoords(e);
+        const hitIndex = getHoveredPointIndex(worldCoords);
+
+        if (e.button === 0) {
+          // Bal klikk
+          if (hitIndex !== -1) {
+            // Ha a legelső pontra kattintunk és a pálya még nyitott (min 3 pont kell egy körhöz)
+            if (hitIndex === 0 && !isClosed && points.length > 2) {
+              isClosed = true; // KÖR BEZÁRÁSA
+            } else {
+              // Különben csak megfogjuk a pontot mozgatásra
+              isDragging = true;
+              dragIndex = hitIndex;
+            }
+          } else if (!isClosed) {
+            // Új pont hozzáadása (csak ha a pálya még nincs lezárva)
+            points.push({
+              x: Math.round(worldCoords.x),
+              y: Math.round(worldCoords.y),
+            });
+            isDragging = true;
+            dragIndex = points.length - 1;
+          }
+        } else if (e.button === 2) {
+          // Jobb klikk
+          if (hitIndex !== -1) {
+            points.splice(hitIndex, 1);
+            if (points.length < 3) isClosed = false; // Ha túl kevés a pont, kinyitjuk a pályát
+          } else {
+            isPanning = true;
+          }
+        } else if (e.button === 1) {
+          // Középső klikk
+          isPanning = true;
+        }
+
+        lastMousePos = { x: e.clientX, y: e.clientY };
+        render();
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isDragging && dragIndex !== -1) {
+          const worldCoords = getMouseWorldCoords(e);
+          points[dragIndex].x = Math.round(worldCoords.x);
+          points[dragIndex].y = Math.round(worldCoords.y);
+          render();
+        } else if (isPanning) {
+          const dx = e.clientX - lastMousePos.x;
+          const dy = e.clientY - lastMousePos.y;
+          camera.x -= dx / camera.zoom;
+          camera.y -= dy / camera.zoom;
+          lastMousePos = { x: e.clientX, y: e.clientY };
+          render();
+        }
+      });
+
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
+        isPanning = false;
+        dragIndex = -1;
+      });
+
+      canvas.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const zoomFactor = 1.1;
+          if (e.deltaY < 0) {
+            camera.zoom *= zoomFactor;
+          } else {
+            camera.zoom /= zoomFactor;
+          }
+          render();
+        },
+        { passive: false },
+      );
+
+      // --- EXPORTÁLÁS ÉS UI ---
+
+      function generateJSON() {
+        const laps = parseInt(document.getElementById("laps").value) || 3;
+        const data = { laps: laps, points: points };
+        return JSON.stringify(data, null, 4);
+      }
+
+      document.getElementById("btn-copy").addEventListener("click", () => {
+        navigator.clipboard
+          .writeText(generateJSON())
+          .then(() => alert("JSON sikeresen a vágólapra másolva!"));
+      });
+
+      document.getElementById("btn-download").addEventListener("click", () => {
+        const blob = new Blob([generateJSON()], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "track_data.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById("btn-clear").addEventListener("click", () => {
+        if (confirm("Biztosan törlöd a teljes pályát?")) {
+          points = [];
+          isClosed = false; // Reseteljük a zárt állapotot
+          render();
+        }
+      });
+
+      // INICIALIZÁLÁS
+      resizeCanvas();
+
+      // Betöltjük a példádat (automatikusan zártként kezeljük, mivel kész pálya)
+      points = [
+        { x: 0, y: 0 },
+        { x: 0, y: -4000 },
+        { x: 500, y: -4500 },
+        { x: 1000, y: -4200 },
+        { x: 1200, y: -3000 },
+        { x: 3000, y: -3500 },
+        { x: 4500, y: -4500 },
+        { x: 6000, y: -4500 },
+        { x: 7500, y: -3500 },
+        { x: 7000, y: -2000 },
+        { x: 5500, y: -1500 },
+        { x: 5000, y: 500 },
+        { x: 6000, y: 1500 },
+        { x: 7500, y: 1500 },
+        { x: 8500, y: 3000 },
+        { x: 7500, y: 5000 },
+        { x: 5000, y: 6000 },
+        { x: 2500, y: 5500 },
+        { x: 1000, y: 4500 },
+        { x: 800, y: 3000 },
+        { x: 2000, y: 2500 },
+        { x: 2500, y: 1500 },
+        { x: 1500, y: 500 },
+      ];
+      isClosed = true;
+      render();
+    </script>
+  </body>
+</html>
