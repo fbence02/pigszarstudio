@@ -10,6 +10,228 @@ const trackWidth = 650;
 let gameActive = false;
 const MAX_PLAYERS = 10;
 const CAMERA_ZOOM = 0.65; 
+let lapHistory = [];
+let bestLapTime = null;
+let countdownActive = false;
+let countdownSeconds = 3;
+let globalWinner = null;
+let globalWinnerTime = Infinity;
+
+function playCountdownTone(freq, duration = 180) {
+    if (!audioCtx) initAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.2 * globalVolume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration / 1000);
+}
+
+function playStartSound() {
+    if (!audioCtx) initAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = 400;
+    gain.gain.setValueAtTime(0.22 * globalVolume, audioCtx.currentTime);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.frequency.exponentialRampToValueAtTime(950, audioCtx.currentTime + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+    osc.stop(audioCtx.currentTime + 0.25);
+}
+
+function playLapFinishSound() {
+    if (!audioCtx) initAudio();
+    const chordFreqs = [440, 550, 660];
+    const now = audioCtx.currentTime;
+    chordFreqs.forEach((freq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.08 * globalVolume, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + index * 0.02);
+        osc.stop(now + 0.28);
+    });
+}
+
+function playFastestLapSound() {
+    if (!audioCtx) initAudio();
+    const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+    const now = audioCtx.currentTime;
+    notes.forEach((freq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.12 * globalVolume, now + index * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.1 + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + index * 0.1);
+        osc.stop(now + index * 0.1 + 0.15);
+    });
+}
+
+function updateCountdownLights(count, go = false) {
+    const lights = document.querySelectorAll('#countdownLights .countdown-light');
+    lights.forEach((light, index) => {
+        if (go) {
+            light.style.background = '#1fc800';
+            light.style.boxShadow = '0 0 20px rgba(31, 200, 0, 0.8)';
+        } else if (index < count) {
+            light.style.background = '#ff2b2b';
+            light.style.boxShadow = '0 0 20px rgba(255, 40, 40, 0.8)';
+        } else {
+            light.style.background = '#300';
+            light.style.boxShadow = 'inset 0 0 12px rgba(255, 0, 0, 0.08)';
+        }
+    });
+}
+
+function showCountdownPanel() {
+    const panel = document.getElementById('raceCountdown');
+    if (!panel) return;
+    panel.style.display = 'flex';
+    countdownActive = true;
+}
+
+function hideCountdownPanel() {
+    const panel = document.getElementById('raceCountdown');
+    if (!panel) return;
+    panel.style.display = 'none';
+    countdownActive = false;
+}
+
+function beginRace() {
+    countdownActive = false;
+    gameActive = true;
+    player.lapStartTime = Date.now();
+    lapHistory = [];
+    bestLapTime = null;
+    updateLapHistoryUI();
+
+    if (isHost) {
+        setInterval(() => {
+            if (gameActive) {
+                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap };
+                for (let id in clients) {
+                    if (clients[id] && clients[id].open) {
+                        clients[id].send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap });
+                    }
+                }
+            }
+        }, 50);
+    } else if (hostConn) {
+        setInterval(() => {
+            if (gameActive && hostConn && hostConn.open) {
+                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap });
+            }
+        }, 50);
+    }
+
+    requestAnimationFrame((timestamp) => {
+        lastTime = timestamp;
+        gameLoop(timestamp);
+    });
+}
+
+function startCountdown() {
+    showCountdownPanel();
+    const textEl = document.getElementById('countdownText');
+    if (!textEl) return;
+
+    let count = countdownSeconds;
+    const tick = () => {
+        if (count > 0) {
+            textEl.innerText = count;
+            updateCountdownLights(countdownSeconds - count + 1);
+            playCountdownTone(450 + (count * 70));
+            count -= 1;
+            setTimeout(tick, 1000);
+        } else {
+            textEl.innerText = 'GO!';
+            updateCountdownLights(3, true);
+            playStartSound();
+            setTimeout(() => {
+                hideCountdownPanel();
+                beginRace();
+            }, 700);
+        }
+    };
+    tick();
+}
+
+function formatLapTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const fraction = Math.floor((ms % 1000) / 10);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}.${fraction.toString().padStart(2, '0')}`;
+}
+
+function updateLapHistoryUI() {
+    const listEl = document.getElementById('lapTimeList');
+    if (!listEl) return;
+
+    const playerLaps = lapHistory.filter(item => item.name === player.name);
+    if (playerLaps.length === 0) {
+        listEl.innerHTML = '<div style="color: #ccc; font-size: 12px;">No lap times yet.</div>';
+        return;
+    }
+
+    const sorted = [...playerLaps].sort((a, b) => b.timestamp - a.timestamp);
+    bestLapTime = sorted.reduce((best, item) => best === null || item.lapTime < best ? item.lapTime : best, null);
+
+    listEl.innerHTML = sorted.map((item, index) => {
+        const isFastest = item.lapTime === bestLapTime;
+        const badgeColor = isFastest ? '#7d3cff' : '#1fc800';
+        let diffText = '';
+        if (index < sorted.length - 1) {
+            const prevLap = sorted[index + 1].lapTime;
+            const diff = item.lapTime - prevLap;
+            const sign = diff > 0 ? '+' : '';
+            diffText = ` (${sign}${formatLapTime(Math.abs(diff))})`;
+        }
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; border-radius: 8px; background: ${badgeColor}; color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,0.06); margin-bottom: 4px; font-size: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+                    <span style="font-size: 11px; opacity: 0.9;">${item.name}</span>
+                    <span style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Lap ${item.lapNumber}</span>
+                </div>
+                <span style="font-size: 11px; font-weight: bold; margin-left: 8px; white-space: nowrap;">${formatLapTime(item.lapTime)}${diffText}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function recordLapTime(name, color, lapTime, lapNumber) {
+    const previousBest = bestLapTime;
+    lapHistory.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: name || 'Pilóta',
+        color: color || '#e10600',
+        lapTime,
+        lapNumber,
+        timestamp: Date.now()
+    });
+    updateLapHistoryUI();
+    const isNowFastest = bestLapTime !== null && lapTime === bestLapTime && lapTime !== previousBest;
+    if (isNowFastest) {
+        playFastestLapSound();
+    } else {
+        playLapFinishSound();
+    }
+}
 
 // Játékos
 const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false };
@@ -62,8 +284,11 @@ function initializeGame() {
         player.color = gameDataFromLobby.playerColor || '#e10600';
         isHost = gameDataFromLobby.isHost;
 
-        if (gameDataFromLobby.track && gameDataFromLobby.track.data) {
-            track = generateSmoothCurve(gameDataFromLobby.track.data.points, 5);
+        if (gameDataFromLobby.track) {
+            const points = gameDataFromLobby.track.data?.points || gameDataFromLobby.track.points;
+            if (Array.isArray(points)) {
+                track = generateSmoothCurve(points, 5);
+            }
         }
 
         document.getElementById('totalLapsVal').innerText = totalLaps;
@@ -91,7 +316,7 @@ function initAudio() {
 function updateAudio(speed, rpm) {
     if(!audioCtx) return;
     let absSpeed = Math.abs(speed);
-    let freq = 50 + (rpm * 100); 
+    let freq = 100 + (rpm * 500); 
     engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
     
     let baseVol = absSpeed > 1 ? 0.02 : 0.005;
@@ -133,15 +358,36 @@ function initPeer() {
             gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...' };
         });
 
+        c.on('open', () => {
+            clients[c.peer] = c;
+            gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
+        });
+
         c.on('data', (data) => {
             if (data.type === 'sync' && gameData[c.peer]) {
                 gameData[c.peer].x = data.x;
                 gameData[c.peer].y = data.y;
                 gameData[c.peer].angle = data.angle;
+                gameData[c.peer].finished = data.finished;
+                gameData[c.peer].lap = data.lap;
             }
-            if (data.type === 'win') {
-                for(let id in clients) clients[id].send({ type: 'win', name: data.name });
-                showWinScreen(data.name);
+            if (data.type === 'finished') {
+                gameData[c.peer].finished = true;
+                if (data.time < globalWinnerTime) {
+                    globalWinner = data.name;
+                    globalWinnerTime = data.time;
+                }
+                // Check if all finished
+                let allFinished = true;
+                for(let id in gameData) {
+                    if (!gameData[id].finished) allFinished = false;
+                }
+                if (allFinished) {
+                    showWinScreen(globalWinner);
+                }
+            }
+            if (data.type === 'allFinished') {
+                showWinScreen(data.winner);
             }
         });
 
@@ -168,7 +414,7 @@ function startGame() {
     }
 
     hud.style.display = 'block';
-    gameActive = true;
+    gameActive = false;
     
     player.x = track[0].x;
     player.y = track[0].y;
@@ -178,42 +424,40 @@ function startGame() {
         let dy = track[1].y - track[0].y;
         player.angle = Math.atan2(dy, dx);
     }
+    player.lapStartTime = null;
+    lapHistory = [];
+    bestLapTime = null;
+    updateLapHistoryUI();
+    gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap };
     
-    if (isHost) {
-        setInterval(() => {
-            if (gameActive) {
-                gameData[myId] = {x: player.x, y: player.y, angle: player.angle};
-                for(let id in clients) {
-                    if (clients[id] && clients[id].open) {
-                        clients[id].send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
-                    }
-                }
-            }
-        }, 50);
-    } else if (hostConn) {
-        setInterval(() => {
-            if (gameActive && hostConn && hostConn.open) {
-                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
-            }
-        }, 50);
-    }
-    
-    requestAnimationFrame((timestamp) => {
-        lastTime = timestamp;
-        gameLoop(timestamp);
-    });
+    drawScene();
+    startCountdown();
 }
 
 // --- ÚJ: GYŐZELEM ÉS ÚJRAINDÍTÁS FUNKCIÓK ---
-function triggerWin(winnerName) {
-    if (!gameActive) return; 
-    gameActive = false; // Leállítja a mozgást
+function triggerFinish(finisherName) {
+    player.finished = true;
+    player.finishTime = Date.now();
+    
+    if (globalWinnerTime > player.finishTime) {
+        globalWinner = finisherName;
+        globalWinnerTime = player.finishTime;
+    }
     
     if (isHost) {
-        for(let id in clients) clients[id].send({ type: 'win', name: winnerName });
-        showWinScreen(winnerName);
+        for(let id in clients) clients[id].send({ type: 'finished', name: finisherName, time: player.finishTime });
+        
+        // Check if all finished
+        let allFinished = true;
+        for(let id in gameData) {
+            if (!gameData[id].finished) allFinished = false;
+        }
+        if (allFinished) {
+            for(let id in clients) clients[id].send({ type: 'allFinished', winner: globalWinner });
+            showWinScreen(globalWinner);
+        }
     } else if (hostConn && hostConn.open) {
-        hostConn.send({ type: 'win', name: winnerName });
+        hostConn.send({ type: 'finished', name: finisherName, time: player.finishTime });
     }
 }
 
@@ -257,14 +501,19 @@ function restartGame() {
     if (track.length > 1) {
         player.angle = Math.atan2(track[1].y - track[0].y, track[1].x - track[0].x);
     }
+    resetLapHistory();
+    globalWinner = null;
+    globalWinnerTime = Infinity;
     
     document.getElementById('hud').style.display = 'block';
-    gameActive = true;
-    
-    requestAnimationFrame((timestamp) => {
-        lastTime = timestamp;
-        gameLoop(timestamp);
-    });
+    startCountdown();
+}
+
+function resetLapHistory() {
+    lapHistory = [];
+    bestLapTime = null;
+    player.lapStartTime = null;
+    updateLapHistoryUI();
 }
 
 // Visszaadja a szakaszt, amin az autó áll (index)
@@ -315,16 +564,20 @@ function drawParticles(ctx, ts) {
 
 // --- FIZIKA ÉS VÁLTÓ ---
 function updatePhysics(ts) {
+    if (player.finished) return; // Freeze finished players
+    
     let speedAbs = Math.abs(player.speed);
     let activeGear;
 
     if (player.speed < -0.5) { activeGear = { id: 'R', min: 0, max: 25, rate: 0.003 }; } 
-    else if (speedAbs < 14) { activeGear = { id: '1', min: 0, max: 16, rate: 0.0025 }; } 
-    else if (speedAbs < 28) { activeGear = { id: '2', min: 11, max: 31, rate: 0.002 }; } 
-    else if (speedAbs < 42) { activeGear = { id: '3', min: 24, max: 45, rate: 0.0015 }; } 
-    else if (speedAbs < 54) { activeGear = { id: '4', min: 38, max: 57, rate: 0.001 }; } 
-    else if (speedAbs < 64) { activeGear = { id: '5', min: 50, max: 67, rate: 0.0008 }; } 
-    else { activeGear = { id: '6', min: 60, max: 75, rate: 0.0005 }; }
+    else if (speedAbs < 12) { activeGear = { id: '1', min: 0, max: 16, rate: 0.0025 }; } 
+    else if (speedAbs < 22) { activeGear = { id: '2', min: 11, max: 27, rate: 0.0022 }; } 
+    else if (speedAbs < 32) { activeGear = { id: '3', min: 22, max: 38, rate: 0.002 }; } 
+    else if (speedAbs < 42) { activeGear = { id: '4', min: 33, max: 49, rate: 0.0017 }; } 
+    else if (speedAbs < 52) { activeGear = { id: '5', min: 44, max: 60, rate: 0.0012 }; } 
+    else if (speedAbs < 62) { activeGear = { id: '6', min: 54, max: 66, rate: 0.0009 }; } 
+    else if (speedAbs < 72) { activeGear = { id: '7', min: 64, max: 74, rate: 0.0007 }; } 
+    else { activeGear = { id: '8', min: 70, max: 90, rate: 0.0005 }; }
 
     currentGearDisplay = activeGear.id;
     currentRPM = (speedAbs - activeGear.min) / (activeGear.max - activeGear.min);
@@ -370,7 +623,7 @@ function updatePhysics(ts) {
         player.speed *= Math.pow(0.975, ts); 
     }
 
-    if (player.speed > 70) player.speed = 70;
+    if (player.speed > 90) player.speed = 90;
     if (player.speed < -20) player.speed = -20;
     
     updateAudio(player.speed, currentRPM);
@@ -384,15 +637,19 @@ function updatePhysics(ts) {
             player.halfway = true;
         }
 
-        // Ha újra az első 20 szakaszon belül van, ÉS megjárta a felét
-        if (trackInfo.index < 20 && player.halfway) {
+        // Ha újra az első 20 szakaszon belül van, ÉS megjárta a felét, ÉS előrefelé halad
+        if (trackInfo.index < 20 && player.halfway && player.speed > 0) {
+            const lapTime = Date.now() - player.lapStartTime;
+            const finishedLap = player.lap;
             player.lap++;
             player.halfway = false; // Következő körhöz újra el kell mennie a feléig
+            player.lapStartTime = Date.now();
+            recordLapTime(player.name, player.color, lapTime, finishedLap);
             
             if (player.lap > totalLaps) {
                 player.finished = true;
                 player.lap = totalLaps; // A UI kiakadása ellen
-                triggerWin(player.name);
+                triggerFinish(player.name);
             }
         }
     }
@@ -422,6 +679,39 @@ function drawF1Car(ctx, x, y, angle, color, name) {
     ctx.fillRect(25, -18, 8, 36); ctx.fillRect(-40, -18, 10, 36);
     ctx.fillStyle = '#000'; 
     ctx.beginPath(); ctx.arc(-5, 0, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+}
+
+function drawScene() {
+    ctx.fillStyle = '#2b5c23';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+    
+    let followX = player.x, followY = player.y;
+    if (player.finished) {
+        // Spectate an active player
+        for (let id in gameData) {
+            if (id !== myId && !gameData[id].finished) {
+                followX = gameData[id].x;
+                followY = gameData[id].y;
+                break;
+            }
+        }
+    }
+    const camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
+    const camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
+    ctx.translate(camX, camY);
+    
+    drawCircuit();
+    drawParticles(ctx, 1);
+    for (let id in gameData) {
+        if (id !== myId) {
+            const p = gameData[id];
+            drawF1Car(ctx, p.x, p.y, p.angle, p.color, p.name);
+        }
+    }
+    drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
     ctx.restore();
 }
 
@@ -486,8 +776,19 @@ function gameLoop(timestamp) {
     ctx.save();
     ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
     
-    let camX = (canvas.width / 2) / CAMERA_ZOOM - player.x;
-    let camY = (canvas.height / 2) / CAMERA_ZOOM - player.y;
+    let followX = player.x, followY = player.y;
+    if (player.finished) {
+        // Spectate an active player
+        for (let id in gameData) {
+            if (id !== myId && !gameData[id].finished) {
+                followX = gameData[id].x;
+                followY = gameData[id].y;
+                break;
+            }
+        }
+    }
+    let camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
+    let camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
     ctx.translate(camX, camY);
 
     drawCircuit();

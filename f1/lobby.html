@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>F1 P2P RACING - HOST LOBBY</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="assets/css/style.css" />
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   </head>
   <body>
@@ -70,13 +70,88 @@
       let availableTracks = [];
 
       // Pályák betöltése
+      async function fetchTrackFileList() {
+        const listUrl = './tracks/track-list.json';
+        try {
+          const response = await fetch(listUrl);
+          if (!response.ok) {
+            throw new Error(`Track list not found: ${response.status}`);
+          }
+          const json = await response.json();
+          if (!json || !Array.isArray(json.tracks)) {
+            throw new Error('Invalid track list structure');
+          }
+          return json.tracks.filter(fileName => typeof fileName === 'string' && fileName.toLowerCase().endsWith('.json'));
+        } catch (error) {
+          console.warn('Track list fetch failed, attempting directory listing:', error);
+          try {
+            const response = await fetch('./tracks/');
+            if (!response.ok) {
+              throw new Error(`Directory listing failed: ${response.status}`);
+            }
+            const html = await response.text();
+            const files = [];
+            const regex = /href="([^"]+\.json)"/gi;
+            let match;
+            while ((match = regex.exec(html)) !== null) {
+              files.push(match[1]);
+            }
+            return [...new Set(files)];
+          } catch (dirError) {
+            console.error('Could not detect track files dynamically:', dirError);
+            return [];
+          }
+        }
+      }
+
+      function isValidTrackData(trackData) {
+        if (!trackData || typeof trackData !== 'object') {
+          return false;
+        }
+
+        if (!Array.isArray(trackData.points) || trackData.points.length === 0) {
+          return false;
+        }
+
+        if ('laps' in trackData && (!Number.isInteger(trackData.laps) || trackData.laps < 1)) {
+          return false;
+        }
+
+        for (const point of trackData.points) {
+          if (!point || typeof point !== 'object') {
+            return false;
+          }
+          if (typeof point.x !== 'number' || typeof point.y !== 'number') {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
       async function loadAvailableTracks() {
         try {
-          const tracks = ['track-1.json', 'track-spa.json', 'track_data.json'];
+          const tracks = await fetchTrackFileList();
           for (const trackFile of tracks) {
+            if (!trackFile || typeof trackFile !== 'string' || !trackFile.toLowerCase().endsWith('.json')) {
+              continue;
+            }
+            if (trackFile.includes('..') || trackFile.startsWith('/')) {
+              continue;
+            }
+
             try {
               const response = await fetch(`./tracks/${trackFile}`);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch ${trackFile}: ${response.status}`);
+              }
               const data = await response.json();
+
+              if (!isValidTrackData(data)) {
+                console.warn('Skipped invalid track file:', trackFile);
+                continue;
+              }
+
               availableTracks.push({
                 file: trackFile,
                 name: data.name || trackFile.replace('.json', ''),
@@ -88,7 +163,6 @@
             }
           }
 
-          // Select feltöltése
           const select = document.getElementById('trackSelect');
           select.innerHTML = '';
           availableTracks.forEach((track, index) => {

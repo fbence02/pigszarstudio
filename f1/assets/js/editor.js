@@ -332,7 +332,7 @@ async function loadDefaultTracks() {
     
     // Also check the old naming conventions
     try {
-        const response = await fetch(`./trackAlpha.json`);
+        const response = await fetch(`./tracks/trackAlpha.json`);
         if (response.ok) {
             const item = document.createElement('div');
             item.className = 'track-item';
@@ -345,7 +345,7 @@ async function loadDefaultTracks() {
     } catch (e) {}
     
     try {
-        const response = await fetch(`./trackSecond.json`);
+        const response = await fetch(`./tracks/trackSecond.json`);
         if (response.ok) {
             const item = document.createElement('div');
             item.className = 'track-item';
@@ -365,7 +365,7 @@ async function selectTrack(element, fileName) {
     
     // Load track info
     try {
-        let path = fileName.includes('track-') ? `./tracks/${fileName}.json` : `./${fileName}.json`;
+        const path = `./tracks/${fileName}.json`;
         const response = await fetch(path);
         const trackData = await response.json();
         
@@ -407,7 +407,7 @@ document.getElementById('openTrack').addEventListener('click', async () => {
     if (!fileName) return;
     
     try {
-        let path = fileName.includes('track-') ? `./tracks/${fileName}.json` : `./${fileName}.json`;
+        const path = `./tracks/${fileName}.json`;
         const response = await fetch(path);
         const trackData = await response.json();
         
