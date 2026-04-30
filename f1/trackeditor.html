@@ -41,7 +41,8 @@
         font-size: 14px;
         color: #ccc;
       }
-      input[type="number"] {
+      input[type="number"],
+      input[type="text"] {
         padding: 8px;
         border: 1px solid #444;
         background: #222;
@@ -115,12 +116,28 @@
   <body>
     <div id="ui-panel">
       <div id="status-badge" class="status-open">Pálya: Nyitott</div>
+
       <div class="ui-group">
         <label for="laps">Körök száma (Laps):</label>
         <input type="number" id="laps" value="3" min="1" />
       </div>
+
+      <!-- ÚJ: Fájlnév megadása -->
+      <div class="ui-group">
+        <label for="filename">Fájlnév:</label>
+        <input type="text" id="filename" value="track_data" />
+      </div>
+
       <button id="btn-copy">JSON Másolása</button>
       <button id="btn-download">JSON Letöltése</button>
+
+      <!-- ÚJ: Pálya kinyitása gomb -->
+      <button
+        id="btn-open"
+        style="background: #ff9800; color: #fff; margin-top: 10px"
+      >
+        Pálya Kinyitása
+      </button>
       <button id="btn-clear">Pálya Törlése</button>
 
       <div class="instructions">
@@ -435,16 +452,30 @@
           .then(() => alert("JSON sikeresen a vágólapra másolva!"));
       });
 
+      // A régi letöltés gomb cseréje erre:
       document.getElementById("btn-download").addEventListener("click", () => {
+        // Kiolvassuk a megadott fájlnevet, ha üres, marad a "track_data"
+        const filenameInput =
+          document.getElementById("filename").value.trim() || "track_data";
         const blob = new Blob([generateJSON()], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "track_data.json";
+        a.download = filenameInput + ".json"; // Itt használjuk a nevet
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+      });
+
+      // ÚJ: Pálya Kinyitása gomb logikája (Ezt csak simán másold be alá)
+      document.getElementById("btn-open").addEventListener("click", () => {
+        if (isClosed) {
+          isClosed = false; // Felbontjuk az összekötést a kezdőponttal
+          render();
+        } else {
+          alert("A pálya jelenleg is nyitott!");
+        }
       });
 
       document.getElementById("btn-clear").addEventListener("click", () => {
