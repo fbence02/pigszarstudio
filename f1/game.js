@@ -5,13 +5,13 @@ window.addEventListener('resize', resize); resize();
 
 // Globális változók
 let track = [];
-let totalLaps = 3; // Alapértelmezett, ha a JSON nem adná meg
+let totalLaps = 3;
 const trackWidth = 650; 
 let gameActive = false;
 const MAX_PLAYERS = 10;
 const CAMERA_ZOOM = 0.65; 
 
-// A játékos kapott körszámlálókat és anti-cheat (halfway) változókat
+// Játékos
 const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false };
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
@@ -20,10 +20,10 @@ window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.code)) keys[e.
 
 // Hálózat
 const prefix = "F1PRO-X-";
-const genCode = () => Math.random().toString(36).substring(2, 7).toUpperCase();
-let myId = genCode(); 
+let myId = sessionStorage.getItem('peerId') || Math.random().toString(36).substring(2, 7).toUpperCase();
 let peer = null, isHost = false, hostConn = null;
 let clients = {}, gameData = {};
+let gameDataFromLobby = null;
 
 // Audio & Rendszer
 let audioCtx, engineOsc, engineGain;
@@ -53,23 +53,25 @@ function generateSmoothCurve(path, iterations = 4) {
 }
 
 // ÚJ: A JSON beolvasása figyelembe veszi a "laps" mezőt is
-async function loadTrack() {
-    try {
-        const response = await fetch('track.json');
-        let data = await response.json();
-        
-        if (data.laps && data.points) {
-            totalLaps = data.laps;
-            track = generateSmoothCurve(data.points, 5); 
-        } else {
-            // Régi struktúra kompatibilitás
-            totalLaps = 3;
-            track = generateSmoothCurve(data, 5);
+function initializeGame() {
+    const gameDataStr = sessionStorage.getItem('gameData');
+    if (gameDataStr) {
+        gameDataFromLobby = JSON.parse(gameDataStr);
+        totalLaps = gameDataFromLobby.laps;
+        player.name = gameDataFromLobby.playerName || gameDataFromLobby.hostName || 'Pilóta';
+        player.color = gameDataFromLobby.playerColor || '#e10600';
+        isHost = gameDataFromLobby.isHost;
+
+        if (gameDataFromLobby.track && gameDataFromLobby.track.data) {
+            track = generateSmoothCurve(gameDataFromLobby.track.data.points, 5);
         }
-    } catch (error) {
-        alert("Hiba a pálya betöltésekor!");
-        console.error(error);
+
+        document.getElementById('totalLapsVal').innerText = totalLaps;
     }
+    
+    initAudio();
+    initPeer();
+    startGame();
 }
 
 function initAudio() {
@@ -113,9 +115,11 @@ function playCrashSound() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
 
-function initPeer(id) {
-    peer = new Peer(prefix + id);
-    peer.on('open', () => { if(isHost) document.getElementById('myCode').innerText = id; });
+function initPeer() {
+    peer = new Peer(prefix + myId);
+    peer.on('open', () => {
+        // Ready
+    });
     
     peer.on('connection', (c) => {
         if (!isHost) return;
@@ -127,21 +131,14 @@ function initPeer(id) {
         c.on('open', () => {
             clients[c.peer] = c;
             gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...' };
-            updatePlayerCount();
-            if(gameActive) c.send({ type: 'start' });
         });
 
         c.on('data', (data) => {
-            if (data.type === 'join' && gameData[c.peer]) {
-                gameData[c.peer].name = data.name;
-                gameData[c.peer].color = data.color;
-            }
             if (data.type === 'sync' && gameData[c.peer]) {
                 gameData[c.peer].x = data.x;
                 gameData[c.peer].y = data.y;
                 gameData[c.peer].angle = data.angle;
             }
-            // ÚJ: Host regisztrálja, ha egy kliens megnyerte a játékot, és szétszórja az infót
             if (data.type === 'win') {
                 for(let id in clients) clients[id].send({ type: 'win', name: data.name });
                 showWinScreen(data.name);
@@ -149,101 +146,27 @@ function initPeer(id) {
         });
 
         c.on('close', () => {
-            delete clients[c.peer]; delete gameData[c.peer]; updatePlayerCount();
+            delete clients[c.peer]; 
+            delete gameData[c.peer];
         });
     });
-    peer.on('error', (err) => { document.getElementById('status').innerText = "Hiba: " + err.type; });
-}
-
-function updatePlayerCount() {
-    if(!gameActive) document.getElementById('playerCount').innerText = `Játékosok: ${Object.keys(clients).length + 1}/${MAX_PLAYERS}`;
-}
-
-function setupPlayerInputs() {
-    player.name = document.getElementById('playerName').value.trim() || 'Pilóta';
-    player.color = document.getElementById('playerColor').value;
-}
-
-document.getElementById('btnHost').onclick = async () => { 
-    await loadTrack();
-    if(track.length === 0) return;
-    initAudio(); setupPlayerInputs();
-    isHost = true; 
-    document.getElementById('mainMenu').style.display = 'none'; 
-    document.getElementById('hostMenu').style.display = 'block'; 
-    gameData[myId] = {x: 0, y: 0, angle: 0, color: player.color, name: player.name}; 
-    initPeer(myId); 
-};
-
-document.getElementById('btnEditor').onclick = () => {
-    window.location.href = './editor.html';
-};
-
-document.getElementById('btnTrackEditor').onclick = () => {
-    window.location.href = './trackeditor.html';
-};
-
-document.getElementById('btnStartRace').onclick = () => {
-    for(let id in clients) clients[id].send({ type: 'start' });
-    startGame();
-};
-
-document.getElementById('btnJoin').onclick = async () => {
-    await loadTrack();
-    if(track.length === 0) return;
-    initAudio(); setupPlayerInputs();
     
-    const code = document.getElementById('joinCode').value.toUpperCase().trim();
-    if (code.length !== 5) return document.getElementById('status').innerText = "Hibás kód!";
-    
-    isHost = false; 
-    document.getElementById('status').innerText = "Csatlakozás szerverhez...";
-    initPeer(myId); 
+    peer.on('error', (err) => { console.error("Peer hiba:", err); });
+}
 
-    setTimeout(() => { 
-        hostConn = peer.connect(prefix + code); 
-        hostConn.on('open', () => { 
-            document.getElementById('status').innerText = "Várakozás a Hostra..."; 
-            hostConn.send({ type: 'join', name: player.name, color: player.color });
-        });
-        hostConn.on('data', (data) => {
-            if (data.type === 'full') { alert("A szerver tele van!"); location.reload(); }
-            if (data.type === 'start') { startGame(); }
-            if (data.type === 'state') {
-                let myFullId = prefix + myId;
-                for (let id in data.players) { 
-                    if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
-                }
-                for (let id in gameData) { 
-                    if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
-                }
-            }
-            if (data.type === 'win') { showWinScreen(data.name); }
-            if (data.type === 'restart') { restartGame(); }
-        });
-    }, 1000);
-};
 
-let lastTime = 0;
 
 function startGame() {
-    let hud = document.getElementById('hud');
+    const hud = document.getElementById('hud');
+    const volSlider = document.getElementById('volSlider');
     
-    if (!document.getElementById('gearVal')) {
-        // A Körök (Laps) kijelző hozzáadva a HUD-hoz!
-        hud.innerHTML = `Sebesség: <span id="speedVal">0</span> km/h <span style="color:#666; margin: 0 10px;">|</span> Fokozat: <span id="gearVal" style="color:#e10600; font-size: 32px; font-weight: 900;">1</span> <span style="color:#666; margin: 0 10px;">|</span> Kör: <span id="lapVal" style="color:#0ff; font-size: 32px; font-weight: 900;">1</span>/${totalLaps}<br><span style="font-size: 18px; color: #aaa;">Max 10 játékos</span>
-        <div style="margin-top: 15px; font-size: 16px; text-shadow: none; pointer-events: auto;">
-            <span style="color: #fff; vertical-align: middle; font-weight: normal;">Hangerő: </span>
-            <input type="range" id="volSlider" min="0" max="1" step="0.05" value="1" style="vertical-align: middle; cursor: pointer; width: 120px;">
-        </div>`;
-        
-        document.getElementById('volSlider').addEventListener('input', (e) => {
+    if (volSlider) {
+        volSlider.addEventListener('input', (e) => {
             globalVolume = parseFloat(e.target.value);
             updateAudio(player.speed, currentRPM); 
         });
     }
 
-    document.getElementById('ui-layer').style.display = 'none';
     hud.style.display = 'block';
     gameActive = true;
     
@@ -259,13 +182,19 @@ function startGame() {
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                gameData[myId].x = player.x; gameData[myId].y = player.y; gameData[myId].angle = player.angle;
-                for(let id in clients) clients[id].send({ type: 'state', players: gameData });
+                gameData[myId] = {x: player.x, y: player.y, angle: player.angle};
+                for(let id in clients) {
+                    if (clients[id] && clients[id].open) {
+                        clients[id].send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
+                    }
+                }
             }
         }, 50);
-    } else {
+    } else if (hostConn) {
         setInterval(() => {
-            if (gameActive && hostConn && hostConn.open) hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
+            if (gameActive && hostConn && hostConn.open) {
+                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle });
+            }
         }, 50);
     }
     
@@ -308,16 +237,10 @@ function showWinScreen(winnerName) {
     winMenu.innerHTML = `
         <h1 style="font-size: 40px; margin-bottom: 10px;">🏁 KOCKÁS ZÁSZLÓ! 🏁</h1>
         <p style="font-size: 26px; color: #0f0; font-weight: bold; margin-bottom: 30px;">A győztes: ${winnerName}!</p>
-        ${isHost ? '<button id="btnRestart">Új Verseny Indítása</button>' : '<p style="color: #aaa; font-weight: bold;">Várakozás a Hostra a folytatáshoz...</p>'}
+        ${isHost ? '<button id="btnRestart" onclick="restartGame()">Új Verseny Indítása</button>' : '<p style="color: #aaa; font-weight: bold;">Várakozás a Hostra a folytatáshoz...</p>'}
+        <button id="btnMenu" onclick="backToMenu()" class="secondary-btn" style="margin-top: 10px;">Menü</button>
     `;
     winMenu.style.display = 'block';
-    
-    if (isHost) {
-        document.getElementById('btnRestart').onclick = () => {
-            for(let id in clients) clients[id].send({ type: 'restart' });
-            restartGame();
-        };
-    }
 }
 
 function restartGame() {
@@ -580,3 +503,17 @@ function gameLoop(timestamp) {
     
     ctx.restore();
 }
+
+let lastTime = 0;
+
+function backToMenu() {
+    if (peer) peer.destroy();
+    if (hostConn) hostConn.close();
+    sessionStorage.clear();
+    window.location.href = './index.html';
+}
+
+// Game startup
+window.addEventListener('load', () => {
+    initializeGame();
+});

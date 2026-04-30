@@ -43,6 +43,9 @@ button {
     font-weight: bold; border-radius: 5px; transition: 0.2s; width: 100%; 
 }
 button:hover { background: #ff1a12; transform: scale(1.02); }
+button:active { transform: scale(0.98); }
+.primary-btn { background: #e10600; border: none; }
+.primary-btn:hover { background: #ff1a12; }
 .secondary-btn { background: #333; border: 2px solid #555; }
 .secondary-btn:hover { background: #444; }
 
@@ -54,4 +57,23 @@ button:hover { background: #ff1a12; transform: scale(1.02); }
 #hud { 
     position: absolute; top: 20px; left: 20px; z-index: 5; display: none; 
     color: white; text-shadow: 2px 2px 0 #000; font-size: 28px; font-weight: bold; font-style: italic; pointer-events: none; 
+}
+
+select { 
+    background: #000; border: 2px solid #444; color: #fff; 
+    padding: 12px; font-size: 16px; width: 100%; 
+    text-transform: uppercase; outline: none; border-radius: 5px; cursor: pointer;
+}
+select:focus { border-color: #e10600; }
+select option { background: #111; color: #fff; }
+
+label { 
+    display: block; color: #aaa; font-size: 12px; margin-bottom: 5px; text-align: left;
+}
+
+a { 
+    color: #e10600; text-decoration: none; transition: 0.2s;
+}
+a:hover { 
+    color: #ff1a12; text-decoration: underline;
 }
