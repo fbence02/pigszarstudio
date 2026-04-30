@@ -206,10 +206,14 @@ document.getElementById('btnJoin').onclick = async () => {
             if (data.type === 'full') { alert("A szerver tele van!"); location.reload(); }
             if (data.type === 'start') { startGame(); }
             if (data.type === 'state') {
-                for (let id in data.players) { if (id !== myId) gameData[id] = data.players[id]; }
-                for (let id in gameData) { if (!data.players[id] && id !== myId) delete gameData[id]; }
+                let myFullId = prefix + myId;
+                for (let id in data.players) { 
+                    if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
+                }
+                for (let id in gameData) { 
+                    if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
+                }
             }
-            // ÚJ: Kliens is megkapja a nyertes vagy újraindítás parancsot
             if (data.type === 'win') { showWinScreen(data.name); }
             if (data.type === 'restart') { restartGame(); }
         });
