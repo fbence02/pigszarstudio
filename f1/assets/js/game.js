@@ -698,34 +698,30 @@ function updatePhysics(ts) {
     
     updateAudio(player.speed, currentRPM);
 
-    // --- ÚJ: KÖRSZÁMLÁLÓ LOGIKA ÉS ANTI-CHEAT ---
     if (!player.finished) {
         let halfTrack = Math.floor(track.length / 2);
         
-        // Ellenőrzés: Eljutott a pálya feléig?
         if (trackInfo.index > halfTrack) {
             player.halfway = true;
         }
 
-        // Ha újra az első 20 szakaszon belül van, ÉS megjárta a felét, ÉS előrefelé halad
         if (trackInfo.index < 20 && player.halfway && player.speed > 0) {
             const lapTime = Date.now() - player.lapStartTime;
             const finishedLap = player.lap;
             player.lap++;
-            player.halfway = false; // Következő körhöz újra el kell mennie a feléig
+            player.halfway = false; 
             player.lapStartTime = Date.now();
             recordLapTime(player.name, player.color, lapTime, finishedLap);
             
             if (player.lap > totalLaps) {
                 player.finished = true;
-                player.lap = totalLaps; // A UI kiakadása ellen
+                player.lap = totalLaps;
                 triggerFinish(player.name);
             }
         }
     }
 }
 
-// Renderelés
 function drawF1Car(ctx, x, y, angle, color, name) {
     ctx.save();
     ctx.translate(x, y);
