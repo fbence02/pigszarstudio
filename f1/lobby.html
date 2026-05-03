@@ -48,6 +48,38 @@
               margin: 15px 0 5px 0;
               font-size: 12px;
             "
+            >AUTÓ SZÍNE:</label
+          >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+            "
+          >
+            <input
+              type="color"
+              id="hostColor"
+              value="#e10600"
+              style="
+                width: 80px;
+                height: 50px;
+                cursor: pointer;
+                background: none;
+                border: 2px solid #444;
+                border-radius: 5px;
+              "
+            />
+          </div>
+
+          <label
+            style="
+              color: #aaa;
+              display: block;
+              margin: 15px 0 5px 0;
+              font-size: 12px;
+            "
             >PÁLYA KIVÁLASZTÁSA:</label
           >
           <select
@@ -197,7 +229,7 @@
       let lapCount = 3;
       let hostName = "Főnök";
       let availableTracks = [];
-
+      let hostColor = "#e10600";
       // Pályák betöltése
       async function fetchTrackFileList() {
         const listUrl = "./tracks/track-list.json";
@@ -346,6 +378,12 @@
         hostName = e.target.value.trim() || "Főnök";
       });
 
+      document.getElementById("hostColor").addEventListener("input", (e) => {
+        hostColor = e.target.value;
+        updatePlayersList();
+        broadcastLobbyState();
+      });
+
       document.getElementById("btnIncreaseLaps").onclick = () => {
         lapCount = Math.min(10, lapCount + 1);
         updateLapDisplay();
@@ -490,9 +528,13 @@
           track: selectedTrack,
           laps: lapCount,
           hostName: hostName,
+          playerColor: hostColor,
           hostId: myId,
           isHost: true,
         };
+
+        sessionStorage.setItem("gameData", JSON.stringify(gameData));
+        sessionStorage.setItem("peerId", myId);
 
         for (let peerId in clients) {
           clients[peerId].conn.send({
