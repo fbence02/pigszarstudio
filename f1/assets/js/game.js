@@ -758,6 +758,25 @@ function drawParticles(ctx, ts) {
 
 // --- FIZIKA ÉS VÁLTÓ ---
 function updatePhysics(ts) {
+    for (let id in gameData) {
+        if (id !== myId) {
+            let p = gameData[id];
+            if (p.targetX !== undefined && p.targetY !== undefined) {
+                // Ha a különbség túl nagy, azonnal ugorjon oda (pl. verseny újraindulása)
+                if (Math.abs(p.targetX - p.x) > 500 || Math.abs(p.targetY - p.y) > 500) {
+                    p.x = p.targetX;
+                    p.y = p.targetY;
+                    p.angle = p.targetAngle;
+                } else {
+                    // Különben sima átmenet (lerp)
+                    p.x = lerp(p.x, p.targetX, 0.3 * ts);
+                    p.y = lerp(p.y, p.targetY, 0.3 * ts);
+                    p.angle = lerpAngle(p.angle, p.targetAngle, 0.3 * ts);
+                }
+            }
+        }
+    }
+
     if (player.finished) return; // Freeze finished players
     
     let speedAbs = Math.abs(player.speed);
