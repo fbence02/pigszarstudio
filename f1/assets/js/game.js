@@ -274,7 +274,7 @@ function generateSmoothCurve(path, iterations = 4) {
     return smoothed;
 }
 
-// ÚJ: A JSON beolvasása figyelembe veszi a "laps" mezőt is
+
 function initializeGame() {
     const gameDataStr = sessionStorage.getItem('gameData');
     if (gameDataStr) {
@@ -348,11 +348,10 @@ function initPeer() {
     });
     
     peer.on('open', () => {
-        // HA KLIENS VAGY, próbálj meg csatlakozni az újrapróbálkozós módszerrel
         if (!isHost && gameDataFromLobby) {
             let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host; 
             if (hostId) {
-                connectToHostWithRetry(hostId, 6); // 6 másodpercig (6-szor) próbálkozik csatlakozni!
+                connectToHostWithRetry(hostId, 6);
             }
         }
     });
