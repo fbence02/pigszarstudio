@@ -1,6 +1,3 @@
 {
-  "tracks": [
-    "boxutca.json",
-    "palmbeach.json"
-  ]
+  "tracks": ["boxutca.json", "palmbeach.json", "twister.json"]
 }
