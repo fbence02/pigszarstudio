@@ -787,7 +787,9 @@ function drawScene() {
 
 function drawCircuit() {
     if(track.length === 0) return;
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    
+    ctx.lineJoin = 'round'; 
+    ctx.lineCap = 'round';
     
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
     for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
@@ -799,12 +801,19 @@ function drawCircuit() {
 
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
     for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 30; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.lineWidth = trackWidth + 40; ctx.strokeStyle = '#fff'; ctx.stroke();
 
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
     for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 30; ctx.strokeStyle = '#e10600';
-    ctx.setLineDash([80, 80]); ctx.stroke(); ctx.setLineDash([]); 
+    ctx.lineWidth = trackWidth + 40; 
+    ctx.strokeStyle = '#e10600';
+    
+    ctx.lineCap = 'butt'; 
+    ctx.setLineDash([60, 60]); 
+    ctx.stroke(); 
+    
+    ctx.setLineDash([]); 
+    ctx.lineCap = 'round'; 
 
     ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
     for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
