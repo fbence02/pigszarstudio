@@ -16,12 +16,8 @@
         <button id="btnJoinLobby" class="secondary-btn">Csatlakozás Szobához</button>
 
         <div style="margin-top: 40px; border-top: 1px solid #444; padding-top: 20px;">
-          <p style="color: #aaa; font-size: 14px; margin: 10px 0;">Track Szerkesztés</p>
-          <button id="btnEditor" class="secondary-btn" style="margin-bottom: 10px; font-size: 14px;">
-            Track Editor v1
-          </button>
           <button id="btnTrackEditor" class="secondary-btn" style="font-size: 14px;">
-            Track Editor v2
+            Pályaszerkesztő
           </button>
         </div>
 
@@ -36,10 +32,6 @@
 
       document.getElementById('btnJoinLobby').onclick = () => {
         window.location.href = './join-lobby.html';
-      };
-
-      document.getElementById('btnEditor').onclick = () => {
-        window.location.href = './editor.html';
       };
 
       document.getElementById('btnTrackEditor').onclick = () => {
