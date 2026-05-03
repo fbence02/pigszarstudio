@@ -113,43 +113,22 @@ function playCrashSound() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
 
+let reconnectTimer = null; 
+
 function initPeer() {
-    // 1. Google STUN szerverek a stabil kapcsolatért (megakadályozza a "kapcsolat bontva" hibát)
     peer = new Peer(prefix + myId, {
         config: { 'iceServers': [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' } ] }
     });
     
     peer.on('open', () => {
-        // 2. HA KLIENS VAGY, CSATLAKOZNI KELL A HOSTHOZ
         if (!isHost && gameDataFromLobby) {
             let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host; 
             if (hostId) {
-                hostConn = peer.connect(prefix + hostId);
-                
-                // Kliens adatfogadása a Hosttól
-                hostConn.on('data', (data) => {
-                    if (data.type === 'state') {
-                        // SZELLEMAUTÓ (Ghosting) JAVÍTÁS!
-                        let myFullId = prefix + myId; 
-                        for (let id in data.players) { 
-                            if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
-                        }
-                        for (let id in gameData) { 
-                            if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
-                        }
-                    }
-                    if (data.type === 'allFinished' || data.type === 'win') {
-                        showWinScreen(data.winner || data.name);
-                    }
-                    if (data.type === 'restart') {
-                        restartGame();
-                    }
-                });
+                connectToHostWithRetry(hostId, 6); 
             }
         }
     });
 
-    // 3. HA HOST VAGY, FOGADD A KLIENSEKET ÉS AZ ADATAIKAT
     peer.on('connection', (c) => {
         if (!isHost) return;
 
@@ -159,17 +138,19 @@ function initPeer() {
                 return;
             }
             clients[c.peer] = c;
-            gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
+            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
         });
 
         c.on('data', (data) => {
-            // Kliensek pozíciójának beolvasása
             if (data.type === 'sync' && gameData[c.peer]) {
                 gameData[c.peer].x = data.x;
                 gameData[c.peer].y = data.y;
                 gameData[c.peer].angle = data.angle;
                 gameData[c.peer].finished = data.finished;
                 gameData[c.peer].lap = data.lap;
+                // Kliens nevének és színének frissítése, amint megérkezik
+                if (data.name) gameData[c.peer].name = data.name; 
+                if (data.color) gameData[c.peer].color = data.color; 
             }
             if (data.type === 'finished') {
                 gameData[c.peer].finished = true;
@@ -187,6 +168,43 @@ function initPeer() {
     });
     
     peer.on('error', (err) => { console.error("Peer hiba:", err); });
+}
+
+function connectToHostWithRetry(hostId, attemptsLeft) {
+    hostConn = peer.connect(prefix + hostId, { reliable: true });
+    
+    hostConn.on('open', () => {
+        console.log("Sikeresen csatlakozva a Hosthoz!");
+        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, name: player.name, color: player.color });
+    });
+
+    hostConn.on('data', (data) => {
+        if (data.type === 'state') {
+            let myFullId = prefix + myId; 
+            for (let id in data.players) { 
+                if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
+            }
+            for (let id in gameData) { 
+                if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
+            }
+        }
+        if (data.type === 'allFinished' || data.type === 'win') {
+            showWinScreen(data.winner || data.name);
+        }
+        if (data.type === 'restart') {
+            restartGame();
+        }
+    });
+
+    hostConn.on('close', () => {
+        if (attemptsLeft > 0) {
+            console.log("Host nem válaszol, újrapróbálkozás... Még " + attemptsLeft + " kísérlet.");
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => connectToHostWithRetry(hostId, attemptsLeft - 1), 1000);
+        } else {
+            console.error("Végleges kapcsolat megszakadás a Hosttal.");
+        }
+    });
 }
 
 function updatePlayerCount() {
