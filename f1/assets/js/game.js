@@ -340,27 +340,34 @@ function playCrashSound() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
 
+let reconnectTimer = null; // Biztonsági időzítő a kliensnek
+
 function initPeer() {
-    peer = new Peer(prefix + myId);
-    peer.on('open', () => {
-        // Ready
+    peer = new Peer(prefix + myId, {
+        config: { 'iceServers': [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' } ] }
     });
     
+    peer.on('open', () => {
+        // HA KLIENS VAGY, próbálj meg csatlakozni az újrapróbálkozós módszerrel
+        if (!isHost && gameDataFromLobby) {
+            let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host; 
+            if (hostId) {
+                connectToHostWithRetry(hostId, 6); // 6 másodpercig (6-szor) próbálkozik csatlakozni!
+            }
+        }
+    });
+
     peer.on('connection', (c) => {
         if (!isHost) return;
-        if (Object.keys(clients).length >= MAX_PLAYERS - 1) {
-            c.on('open', () => { c.send({ type: 'full' }); setTimeout(()=>c.close(), 500); });
-            return;
-        }
 
         c.on('open', () => {
+            if (Object.keys(clients).length >= MAX_PLAYERS - 1) {
+                c.send({ type: 'full' }); setTimeout(()=>c.close(), 500);
+                return;
+            }
             clients[c.peer] = c;
-            gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...' };
-        });
-
-        c.on('open', () => {
-            clients[c.peer] = c;
-            gameData[c.peer] = { x: 0, y: 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
+            // Alapértelmezett értékek megadása, ha még nincs pozíció
+            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
         });
 
         c.on('data', (data) => {
@@ -370,6 +377,9 @@ function initPeer() {
                 gameData[c.peer].angle = data.angle;
                 gameData[c.peer].finished = data.finished;
                 gameData[c.peer].lap = data.lap;
+                // Kliens nevének és színének frissítése, amint megérkezik
+                if (data.name) gameData[c.peer].name = data.name; 
+                if (data.color) gameData[c.peer].color = data.color; 
             }
             if (data.type === 'finished') {
                 gameData[c.peer].finished = true;
@@ -377,17 +387,6 @@ function initPeer() {
                     globalWinner = data.name;
                     globalWinnerTime = data.time;
                 }
-                // Check if all finished
-                let allFinished = true;
-                for(let id in gameData) {
-                    if (!gameData[id].finished) allFinished = false;
-                }
-                if (allFinished) {
-                    showWinScreen(globalWinner);
-                }
-            }
-            if (data.type === 'allFinished') {
-                showWinScreen(data.winner);
             }
         });
 
@@ -398,6 +397,47 @@ function initPeer() {
     });
     
     peer.on('error', (err) => { console.error("Peer hiba:", err); });
+}
+
+// --- ÚJ FÜGGVÉNY: Kliens csatlakozása újrapróbálkozással ---
+function connectToHostWithRetry(hostId, attemptsLeft) {
+    hostConn = peer.connect(prefix + hostId, { reliable: true });
+    
+    hostConn.on('open', () => {
+        console.log("Sikeresen csatlakozva a Hosthoz!");
+        // Amint sikeres a csatlakozás, a kliens beküldi a nevét és színét!
+        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, name: player.name, color: player.color });
+    });
+
+    hostConn.on('data', (data) => {
+        if (data.type === 'state') {
+            let myFullId = prefix + myId; 
+            for (let id in data.players) { 
+                if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
+            }
+            for (let id in gameData) { 
+                if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
+            }
+        }
+        if (data.type === 'allFinished' || data.type === 'win') {
+            showWinScreen(data.winner || data.name);
+        }
+        if (data.type === 'restart') {
+            restartGame();
+        }
+    });
+
+    hostConn.on('close', () => {
+        if (attemptsLeft > 0) {
+            console.log("Host nem válaszol, újrapróbálkozás... Még " + attemptsLeft + " kísérlet.");
+            clearTimeout(reconnectTimer);
+            // 1 másodperc múlva újra megpróbálja
+            reconnectTimer = setTimeout(() => connectToHostWithRetry(hostId, attemptsLeft - 1), 1000);
+        } else {
+            console.error("Végleges kapcsolat megszakadás a Hosttal.");
+            // Ide jöhet egy alert, ha teljesen sikertelen
+        }
+    });
 }
 
 
@@ -490,8 +530,17 @@ function showWinScreen(winnerName) {
 function restartGame() {
     let winMenu = document.getElementById('winMenu');
     if (winMenu) winMenu.style.display = 'none';
-    
-    // Játékos resetelése
+
+    // 1. HOST JELZI MINDENKINEK AZ ÚJRAINDÍTÁST!
+    if (isHost) {
+        for (let id in clients) {
+            if (clients[id] && clients[id].open) {
+                clients[id].send({ type: 'restart' });
+            }
+        }
+    }
+
+    // 2. SAJÁT JÁTÉKOS RESETELÉSE
     player.lap = 1;
     player.halfway = false;
     player.finished = false;
@@ -504,9 +553,22 @@ function restartGame() {
     resetLapHistory();
     globalWinner = null;
     globalWinnerTime = Infinity;
-    
+
+    // 3. TÖBBI JÁTÉKOS RESETELÉSE A MEMÓRIÁBAN (Hogy ők is mozoghassanak)
+    for (let id in gameData) {
+        gameData[id].finished = false;
+        gameData[id].lap = 1;
+    }
+
     document.getElementById('hud').style.display = 'block';
-    startCountdown();
+    
+    // 4. JÁTÉK INDÍTÁSA
+    if (typeof startCountdown === "function") {
+        startCountdown();
+    } else {
+        gameActive = true;
+        player.lapStartTime = Date.now();
+    }
 }
 
 function resetLapHistory() {
