@@ -123,10 +123,10 @@ function beginRace() {
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap };
+                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, name: player.name, color: player.color };
                 for (let id in clients) {
                     if (clients[id] && clients[id].open) {
-                        clients[id].send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap });
+                        clients[id].send({ type: 'state', players: gameData });
                     }
                 }
             }
@@ -396,7 +396,16 @@ function initPeer() {
         });
     });
     
-    peer.on('error', (err) => { console.error("Peer hiba:", err); });
+    peer.on('error', (err) => { 
+        console.error("Peer hiba:", err); 
+        if (err.type === 'peer-unavailable' && !isHost && gameDataFromLobby) {
+            let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host;
+            if (hostId) {
+                console.log("Host is loading... Trying again in 1 second");
+                setTimeout(() => { connectToHostWithRetry(hostId, 5); }, 1000);
+            }
+        }
+    });
 }
 
 // --- ÚJ FÜGGVÉNY: Kliens csatlakozása újrapróbálkozással ---
