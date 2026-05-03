@@ -141,6 +141,9 @@ function initPeer() {
                     if (data.type === 'allFinished' || data.type === 'win') {
                         showWinScreen(data.winner || data.name);
                     }
+                    if (data.type === 'restart') {
+                        restartGame();
+                    }
                 });
             }
         }
@@ -269,7 +272,7 @@ function startGame() {
     }
 
     hud.style.display = 'block';
-    gameActive = true; // Ezt átállítottam true-ra, hogy egyből indulhasson a játék!
+    gameActive = true; 
     
     player.x = track[0].x;
     player.y = track[0].y;
@@ -284,11 +287,9 @@ function startGame() {
     bestLapTime = null;
     updateLapHistoryUI();
     
-    // --- HIÁNYZÓ HÁLÓZATI SZINKRONIZÁCIÓ PÓTLÁSA ---
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                // Host frissíti a saját adatait, majd elküldi MINDENKINEK
                 gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, color: player.color, name: player.name };
                 for (let id in clients) {
                     if (clients[id] && clients[id].open) {
@@ -300,14 +301,10 @@ function startGame() {
     } else {
         setInterval(() => {
             if (gameActive && hostConn && hostConn.open) {
-                // Kliens küldi a saját adatait a Hostnak
                 hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap });
             }
         }, 50);
     }
-
-    // Ha van külön startCountdown() függvényed valahol a kód alján, 
-    // akkor azt itt meghívhatod, de a játék a fenti ciklusok nélkül nem fog menni!
     
     requestAnimationFrame((timestamp) => {
         lastTime = timestamp;
@@ -363,8 +360,16 @@ function showWinScreen(winnerName) {
 function restartGame() {
     let winMenu = document.getElementById('winMenu');
     if (winMenu) winMenu.style.display = 'none';
-    
-    // Játékos resetelése
+
+    // 1. HOST JELZI MINDENKINEK AZ ÚJRAINDÍTÁST!
+    if (isHost) {
+        for (let id in clients) {
+            if (clients[id] && clients[id].open) {
+                clients[id].send({ type: 'restart' });
+            }
+        }
+    }
+
     player.lap = 1;
     player.halfway = false;
     player.finished = false;
@@ -374,14 +379,23 @@ function restartGame() {
     if (track.length > 1) {
         player.angle = Math.atan2(track[1].y - track[0].y, track[1].x - track[0].x);
     }
-    
+    resetLapHistory();
+    globalWinner = null;
+    globalWinnerTime = Infinity;
+
+    for (let id in gameData) {
+        gameData[id].finished = false;
+        gameData[id].lap = 1;
+    }
+
     document.getElementById('hud').style.display = 'block';
-    gameActive = true;
     
-    requestAnimationFrame((timestamp) => {
-        lastTime = timestamp;
-        gameLoop(timestamp);
-    });
+    if (typeof startCountdown === "function") {
+        startCountdown();
+    } else {
+        gameActive = true;
+        player.lapStartTime = Date.now();
+    }
 }
 
 // Visszaadja a szakaszt, amin az autó áll (index)
