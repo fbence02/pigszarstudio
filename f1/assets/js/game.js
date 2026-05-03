@@ -7,10 +7,10 @@ window.addEventListener('resize', resize); resize();
 let track = [];
 let checkpoints = [];
 let totalLaps = 3;
-const trackWidth = 650; 
+const trackWidth = 650;
 let gameActive = false;
 const MAX_PLAYERS = 10;
-const CAMERA_ZOOM = 0.65; 
+const CAMERA_ZOOM = 0.65;
 let lapHistory = [];
 let bestLapTime = null;
 let countdownActive = false;
@@ -118,6 +118,7 @@ function beginRace() {
     countdownActive = false;
     gameActive = true;
     player.lapStartTime = Date.now();
+    player.raceStartTime = Date.now(); // ÚJ: Verseny kezdetének mérése az eltelt időhöz
     lapHistory = [];
     bestLapTime = null;
     updateLapHistoryUI();
@@ -125,7 +126,7 @@ function beginRace() {
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint };
+                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint };
                 for (let id in clients) {
                     if (clients[id] && clients[id].open) {
                         clients[id].send({ type: 'state', players: gameData });
@@ -136,7 +137,7 @@ function beginRace() {
     } else if (hostConn) {
         setInterval(() => {
             if (gameActive && hostConn && hostConn.open) {
-                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, currentCheckpoint: player.currentCheckpoint });
+                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
             }
         }, 50);
     }
@@ -236,7 +237,7 @@ function recordLapTime(name, color, lapTime, lapNumber) {
 }
 
 // Játékos
-const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false, currentCheckpoint: 0, checkpointTimes: [] };
+const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false, finishTime: null, raceStartTime: null, currentCheckpoint: 0, checkpointTimes: [] };
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
 window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
@@ -261,13 +262,13 @@ let particles = [];
 function generateSmoothCurve(path, iterations = 4) {
     if (path.length < 3) return path;
     let smoothed = [...path];
-    
+
     for (let iter = 0; iter < iterations; iter++) {
         let newPath = [];
         for (let i = 0; i < smoothed.length; i++) {
             let p1 = smoothed[i];
             let p2 = smoothed[(i + 1) % smoothed.length];
-            
+
             newPath.push({ x: p1.x * 0.75 + p2.x * 0.25, y: p1.y * 0.75 + p2.y * 0.25 });
             newPath.push({ x: p1.x * 0.25 + p2.x * 0.75, y: p1.y * 0.25 + p2.y * 0.75 });
         }
@@ -280,10 +281,10 @@ function generateSmoothCurve(path, iterations = 4) {
 function generateCheckpointsFromTrack() {
     if (track.length === 0) return;
     checkpoints = [];
-    
+
     // Generate checkpoints every N points along the track (4-5 checkpoints typically)
     const checkpointInterval = Math.max(1, Math.floor(track.length / 5));
-    
+
     for (let i = 0; i < track.length; i += checkpointInterval) {
         checkpoints.push({
             index: checkpoints.length,
@@ -292,7 +293,7 @@ function generateCheckpointsFromTrack() {
             trackIndex: i
         });
     }
-    
+
     // Always ensure checkpoint 0 is at the start/finish
     checkpoints[0] = {
         index: 0,
@@ -300,7 +301,7 @@ function generateCheckpointsFromTrack() {
         y: track[0].y,
         trackIndex: 0
     };
-    
+
     console.log(`Generated ${checkpoints.length} checkpoints for track`);
 }
 function initializeGame() {
@@ -322,14 +323,14 @@ function initializeGame() {
 
         document.getElementById('totalLapsVal').innerText = totalLaps;
     }
-    
+
     initAudio();
     initPeer();
     startGame();
 }
 
 function initAudio() {
-    if(audioCtx) return;
+    if (audioCtx) return;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContext();
     engineOsc = audioCtx.createOscillator();
@@ -343,28 +344,28 @@ function initAudio() {
 }
 
 function updateAudio(speed, rpm) {
-    if(!audioCtx) return;
+    if (!audioCtx) return;
     let absSpeed = Math.abs(speed);
-    let freq = 100 + (rpm * 500); 
+    let freq = 100 + (rpm * 500);
     engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
-    
+
     let baseVol = absSpeed > 1 ? 0.02 : 0.005;
     engineGain.gain.setTargetAtTime(baseVol * globalVolume, audioCtx.currentTime, 0.1);
 }
 
 function playCrashSound() {
-    if(!audioCtx || globalVolume === 0) return; 
-    
+    if (!audioCtx || globalVolume === 0) return;
+
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
     osc.type = 'square';
     osc.frequency.setValueAtTime(150, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
-    
-    let crashVol = Math.max(0.0001, 0.05 * globalVolume); 
+
+    let crashVol = Math.max(0.0001, 0.05 * globalVolume);
     gain.gain.setValueAtTime(crashVol, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-    
+
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
 }
@@ -373,12 +374,12 @@ let reconnectTimer = null; // Biztonsági időzítő a kliensnek
 
 function initPeer() {
     peer = new Peer(prefix + myId, {
-        config: { 'iceServers': [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' } ] }
+        config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
     });
-    
+
     peer.on('open', () => {
         if (!isHost && gameDataFromLobby) {
-            let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host; 
+            let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host;
             if (hostId) {
                 connectToHostWithRetry(hostId, 6);
             }
@@ -390,7 +391,7 @@ function initPeer() {
 
         c.on('open', () => {
             if (Object.keys(clients).length >= MAX_PLAYERS - 1) {
-                c.send({ type: 'full' }); setTimeout(()=>c.close(), 500);
+                c.send({ type: 'full' }); setTimeout(() => c.close(), 500);
                 return;
             }
             clients[c.peer] = c;
@@ -400,18 +401,22 @@ function initPeer() {
 
         c.on('data', (data) => {
             if (data.type === 'sync' && gameData[c.peer]) {
+                if (data.finishTime !== undefined) gameData[c.peer].finishTime = data.finishTime;
                 gameData[c.peer].x = data.x;
                 gameData[c.peer].y = data.y;
                 gameData[c.peer].angle = data.angle;
                 gameData[c.peer].finished = data.finished;
+                if (data.finishTime !== undefined) gameData[c.peer].finishTime = data.finishTime;
                 gameData[c.peer].lap = data.lap;
                 gameData[c.peer].currentCheckpoint = data.currentCheckpoint;
                 // Kliens nevének és színének frissítése, amint megérkezik
-                if (data.name) gameData[c.peer].name = data.name; 
-                if (data.color) gameData[c.peer].color = data.color; 
+                gameData[c.peer].finishTime = data.time;
+                if (data.name) gameData[c.peer].name = data.name;
+                if (data.color) gameData[c.peer].color = data.color;
             }
             if (data.type === 'finished') {
                 gameData[c.peer].finished = true;
+                gameData[c.peer].finishTime = data.time;
                 if (data.time < globalWinnerTime) {
                     globalWinner = data.name;
                     globalWinnerTime = data.time;
@@ -420,13 +425,13 @@ function initPeer() {
         });
 
         c.on('close', () => {
-            delete clients[c.peer]; 
+            delete clients[c.peer];
             delete gameData[c.peer];
         });
     });
-    
-    peer.on('error', (err) => { 
-        console.error("Peer hiba:", err); 
+
+    peer.on('error', (err) => {
+        console.error("Peer hiba:", err);
         if (err.type === 'peer-unavailable' && !isHost && gameDataFromLobby) {
             let hostId = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host;
             if (hostId) {
@@ -440,7 +445,7 @@ function initPeer() {
 // --- ÚJ FÜGGVÉNY: Kliens csatlakozása újrapróbálkozással ---
 function connectToHostWithRetry(hostId, attemptsLeft) {
     hostConn = peer.connect(prefix + hostId, { reliable: true });
-    
+
     hostConn.on('open', () => {
         console.log("Sikeresen csatlakozva a Hosthoz!");
         // Amint sikeres a csatlakozás, a kliens beküldi a nevét és színét!
@@ -449,12 +454,12 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
 
     hostConn.on('data', (data) => {
         if (data.type === 'state') {
-            let myFullId = prefix + myId; 
-            for (let id in data.players) { 
-                if (id !== myId && id !== myFullId) gameData[id] = data.players[id]; 
+            let myFullId = prefix + myId;
+            for (let id in data.players) {
+                if (id !== myId && id !== myFullId) gameData[id] = data.players[id];
             }
-            for (let id in gameData) { 
-                if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id]; 
+            for (let id in gameData) {
+                if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id];
             }
         }
         if (data.type === 'allFinished' || data.type === 'win') {
@@ -483,21 +488,21 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
 function startGame() {
     const hud = document.getElementById('hud');
     const volSlider = document.getElementById('volSlider');
-    
+
     if (volSlider) {
         volSlider.addEventListener('input', (e) => {
             globalVolume = parseFloat(e.target.value);
-            updateAudio(player.speed, currentRPM); 
+            updateAudio(player.speed, currentRPM);
         });
     }
 
     hud.style.display = 'block';
     gameActive = false;
-    
+
     player.x = track[0].x;
     player.y = track[0].y;
     player.currentCheckpoint = 0;
-    
+
     if (track.length > 1) {
         let dx = track[1].x - track[0].x;
         let dy = track[1].y - track[0].y;
@@ -508,7 +513,7 @@ function startGame() {
     bestLapTime = null;
     updateLapHistoryUI();
     gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, currentCheckpoint: player.currentCheckpoint };
-    
+
     drawScene();
     startCountdown();
 }
@@ -517,22 +522,23 @@ function startGame() {
 function triggerFinish(finisherName) {
     player.finished = true;
     player.finishTime = Date.now();
-    
+    player.finishTime = Date.now() - player.raceStartTime; // Abszolút idő helyett eltelt időt használunk (Nincs több óra-elcsúszási hiba!)
+
     if (globalWinnerTime > player.finishTime) {
         globalWinner = finisherName;
         globalWinnerTime = player.finishTime;
     }
-    
+
     if (isHost) {
-        for(let id in clients) clients[id].send({ type: 'finished', name: finisherName, time: player.finishTime });
-        
+        for (let id in clients) clients[id].send({ type: 'finished', name: finisherName, time: player.finishTime });
+
         // Check if all finished
         let allFinished = true;
-        for(let id in gameData) {
+        for (let id in gameData) {
             if (!gameData[id].finished) allFinished = false;
         }
         if (allFinished) {
-            for(let id in clients) clients[id].send({ type: 'allFinished', winner: globalWinner });
+            for (let id in clients) clients[id].send({ type: 'allFinished', winner: globalWinner });
             showWinScreen(globalWinner);
         }
     } else if (hostConn && hostConn.open) {
@@ -543,7 +549,7 @@ function triggerFinish(finisherName) {
 function showWinScreen(winnerName) {
     gameActive = false;
     document.getElementById('hud').style.display = 'none';
-    
+
     let winMenu = document.getElementById('winMenu');
     if (!winMenu) {
         winMenu = document.createElement('div');
@@ -556,7 +562,7 @@ function showWinScreen(winnerName) {
         winMenu.style.zIndex = '20';
         document.body.appendChild(winMenu);
     }
-    
+
     winMenu.innerHTML = `
         <h1 style="font-size: 40px; margin-bottom: 10px;">🏁 KOCKÁS ZÁSZLÓ! 🏁</h1>
         <p style="font-size: 26px; color: #0f0; font-weight: bold; margin-bottom: 30px;">A győztes: ${winnerName}!</p>
@@ -583,6 +589,8 @@ function restartGame() {
     player.lap = 1;
     player.currentCheckpoint = 0;
     player.finished = false;
+    player.finishTime = null;
+    player.raceStartTime = null;
     player.speed = 0;
     player.x = track[0].x;
     player.y = track[0].y;
@@ -596,12 +604,13 @@ function restartGame() {
     // 3. TÖBBI JÁTÉKOS RESETELÉSE A MEMÓRIÁBAN (Hogy ők is mozoghassanak)
     for (let id in gameData) {
         gameData[id].finished = false;
+        gameData[id].finishTime = null;
         gameData[id].lap = 1;
         gameData[id].currentCheckpoint = 0;
     }
 
     document.getElementById('hud').style.display = 'block';
-    
+
     // 4. JÁTÉK INDÍTÁSA
     if (typeof startCountdown === "function") {
         startCountdown();
@@ -624,15 +633,15 @@ function getTrackDistanceAndNormal(p) {
     let normal = null;
     let closestIndex = 0; // ÚJ: Szükség van az indexre a körszámláláshoz
     for (let i = 0; i < track.length - 1; i++) {
-        let v = track[i], w = track[i+1];
-        let l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
+        let v = track[i], w = track[i + 1];
+        let l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
         let t = l2 === 0 ? 0 : ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
-        t = Math.max(0, Math.min(1, t)); 
+        t = Math.max(0, Math.min(1, t));
         let cx = v.x + t * (w.x - v.x);
         let cy = v.y + t * (w.y - v.y);
         let dx = p.x - cx, dy = p.y - cy;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < minDist) { minDist = dist; normal = { x: -dx/dist, y: -dy/dist }; closestIndex = i; }
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) { minDist = dist; normal = { x: -dx / dist, y: -dy / dist }; closestIndex = i; }
     }
     return { dist: minDist, normal: normal, index: closestIndex };
 }
@@ -652,21 +661,31 @@ function calculateLeaderboard() {
     const allPlayers = [
         { id: myId, ...player, isSelf: true }
     ];
-    
+
     for (let id in gameData) {
         if (id !== myId) {
             allPlayers.push({ id: id, ...gameData[id], isSelf: false });
         }
     }
-    
+
     // Sort by: finished status desc, lap desc, currentCheckpoint desc
     allPlayers.sort((a, b) => {
-        if (b.finished !== a.finished) return b.finished - a.finished; // Finished players first
-        if (b.lap !== a.lap) return b.lap - a.lap; // Higher lap
-        if (b.currentCheckpoint !== a.currentCheckpoint) return b.currentCheckpoint - a.currentCheckpoint; // More checkpoints passed
-        return 0;
+        // 1. Szabály: Aki befejezte, az mindig előrébb van
+        if (a.finished && !b.finished) return -1;
+        if (!a.finished && b.finished) return 1;
+
+        // 2. Szabály: Ha mindketten befejezték, a befejezési idő (ms) számít (kisebb a jobb)
+        if (a.finished && b.finished) {
+            return (a.finishTime || Infinity) - (b.finishTime || Infinity);
+        }
+
+        // 3. Szabály: Ha egyik sem fejezte be, az aktuális haladás (kör, cp) számít
+        if (b.lap !== a.lap) return b.lap - a.lap; // Magasabb kör
+        if (b.currentCheckpoint !== a.currentCheckpoint) return b.currentCheckpoint - a.currentCheckpoint; // Magasabb checkpoint
+
+        return 0; // Egyenlő
     });
-    
+
     return allPlayers;
 }
 
@@ -680,40 +699,43 @@ function updateLeaderboardUI() {
 
     leaderboard.slice(0, 10).forEach((p, idx) => {
         const position = idx + 1;
-        // Calculate time gap relative to the next player (not the leader)
-        const nextPlayer = leaderboard[idx + 1];
-        const timeDelta = idx === leaderboard.length - 1 ? '' : calculateTimeGap(p, nextPlayer);
+        const nextPlayer = idx < leaderboard.length - 1 ? leaderboard[idx + 1] : null;
+        let timeDelta = '';
+        if (nextPlayer) {
+            timeDelta = calculateTimeGap(p, nextPlayer);
+        }
 
         html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: ${idx % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)'}; border: ${p.isSelf ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,255,255,0.08)'}; box-shadow: inset 0 0 0 0 rgba(255,255,255,0.04); margin-bottom: 6px; font-size: 14px;">
-                <span style="color: #fff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px;">${position}. ${p.name}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #333; color: ${p.isSelf ? '#ffd700' : '#fff'};">
+                <span style="font-size: 14px;">${position}. ${p.name || 'Játékos'} ${p.isSelf ? '(Te)' : ''}</span>
                 <span style="font-size: 12px; font-weight: bold; margin-left: 10px; white-space: nowrap; color: #8cff8c;">${timeDelta}</span>
             </div>
         `;
     });
 
-    // Find or create the list container
-    let listEl = leaderEl.querySelector('#leaderboardList');
-    if (!listEl) {
-        leaderEl.innerHTML = '<div id="leaderboardList" style="display: flex; flex-direction: column; gap: 8px;">' + html + '</div>';
-    } else {
-        listEl.innerHTML = html;
-    }
+    leaderEl.innerHTML = html;
 }
 
 // Calculate time gap between two players
 function calculateTimeGap(player1, player2) {
     if (!player2) return '';
 
+    // Ha mindkét játékos célba ért, írjuk ki az ezredmásodperc pontosságú időkülönbséget
+    if (player1.finished && player2.finished) {
+        const timeDiff = Math.abs((player1.finishTime || 0) - (player2.finishTime || 0));
+        return `+${formatLapTime(timeDiff)}`;
+    }
+
+    // Ha a vezető célba ért, de a mögötte lévő nem, akkor körhátrányban van
+    if (player1.finished && !player2.finished) {
+        const lapsBehind = totalLaps - player2.lap + 1;
+        if (lapsBehind > 0) return `+${lapsBehind} kör`;
+    }
+
+    // Egyik sem ért be, mutassuk a körkülönbséget ha van
     const lapDiff = player1.lap - player2.lap;
-    if (lapDiff > 1) {
-        return `+${lapDiff} ${lapDiff === 1 ? 'lap' : 'laps'}`;
-    }
-    if (lapDiff === 1) {
-        return '+1 lap';
-    }
-    if (lapDiff < 0) {
-        return `-${Math.abs(lapDiff)} ${Math.abs(lapDiff) === 1 ? 'lap' : 'laps'}`;
+    if (lapDiff > 0) {
+        return `+${lapDiff} kör`;
     }
 
     // Same lap, check checkpoint difference
@@ -721,322 +743,319 @@ function calculateTimeGap(player1, player2) {
     if (cpDiff > 0) {
         return `+${cpDiff} CP`;
     }
-    if (cpDiff < 0) {
-        return `-${Math.abs(cpDiff)} CP`;
-    }
 
     // Same position
     return '';
 }
 
-function createImpactParticles(x, y, normal) {
-    for(let i = 0; i < 25; i++) {
-        particles.push({
-            x: x, y: y,
-            vx: normal.x * (Math.random() * 8 + 2) + (Math.random() - 0.5) * 8,
-            vy: normal.y * (Math.random() * 8 + 2) + (Math.random() - 0.5) * 8,
-            life: 1.0,
-            color: Math.random() > 0.4 ? '#111' : '#ffcc00' 
-        });
-    }
-}
-
-function drawParticles(ctx, ts) {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx * ts; p.y += p.vy * ts;
-        p.life -= 0.05 * ts;
-        if (p.life <= 0) { particles.splice(i, 1); } 
-        else {
-            ctx.globalAlpha = Math.max(0, p.life);
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x, p.y, p.color === '#111' ? 6 : 3, p.color === '#111' ? 6 : 3);
-        }
-    }
-    ctx.globalAlpha = 1.0;
-}
-
-// --- FIZIKA ÉS VÁLTÓ ---
-function updatePhysics(ts) {
-    for (let id in gameData) {
-        if (id !== myId) {
-            let p = gameData[id];
-            if (p.targetX !== undefined && p.targetY !== undefined) {
-                // Ha a különbség túl nagy, azonnal ugorjon oda (pl. verseny újraindulása)
-                if (Math.abs(p.targetX - p.x) > 500 || Math.abs(p.targetY - p.y) > 500) {
-                    p.x = p.targetX;
-                    p.y = p.targetY;
-                    p.angle = p.targetAngle;
-                } else {
-                    // Különben sima átmenet (lerp)
-                    p.x = lerp(p.x, p.targetX, 0.3 * ts);
-                    p.y = lerp(p.y, p.targetY, 0.3 * ts);
-                    p.angle = lerpAngle(p.angle, p.targetAngle, 0.3 * ts);
+                function createImpactParticles(x, y, normal) {
+                    for (let i = 0; i < 25; i++) {
+                        particles.push({
+                            x: x, y: y,
+                            vx: normal.x * (Math.random() * 8 + 2) + (Math.random() - 0.5) * 8,
+                            vy: normal.y * (Math.random() * 8 + 2) + (Math.random() - 0.5) * 8,
+                            life: 1.0,
+                            color: Math.random() > 0.4 ? '#111' : '#ffcc00'
+                        });
+                    }
                 }
-            }
-        }
-    }
 
-    if (player.finished) return; // Freeze finished players
-    
-    let speedAbs = Math.abs(player.speed);
-    let activeGear;
-
-    if (player.speed < -0.5) { activeGear = { id: 'R', min: 0, max: 25, rate: 0.003 }; } 
-    else if (speedAbs < 12) { activeGear = { id: '1', min: 0, max: 16, rate: 0.0025 }; } 
-    else if (speedAbs < 22) { activeGear = { id: '2', min: 11, max: 27, rate: 0.0022 }; } 
-    else if (speedAbs < 32) { activeGear = { id: '3', min: 22, max: 38, rate: 0.002 }; } 
-    else if (speedAbs < 42) { activeGear = { id: '4', min: 33, max: 49, rate: 0.0017 }; } 
-    else if (speedAbs < 52) { activeGear = { id: '5', min: 44, max: 60, rate: 0.0012 }; } 
-    else if (speedAbs < 62) { activeGear = { id: '6', min: 54, max: 66, rate: 0.0009 }; } 
-    else if (speedAbs < 72) { activeGear = { id: '7', min: 64, max: 74, rate: 0.0007 }; } 
-    else { activeGear = { id: '8', min: 70, max: 90, rate: 0.0005 }; }
-
-    currentGearDisplay = activeGear.id;
-    currentRPM = (speedAbs - activeGear.min) / (activeGear.max - activeGear.min);
-    currentRPM = Math.max(0, Math.min(1, currentRPM));
-
-    if (keys.ArrowUp) {
-        if (player.speed < 0) { player.speed += 0.8 * ts; } 
-        else { player.speed += (80 - player.speed) * activeGear.rate * ts; }
-    } else if (keys.ArrowDown) {
-        if (player.speed > 0) { player.speed -= 0.8 * ts; } 
-        else { player.speed += (-25 - player.speed) * activeGear.rate * ts; }
-    } else {
-        player.speed *= Math.pow(player.friction, ts);
-    }
-
-    if (Math.abs(player.speed) > 0.5) {
-        let turnDir = player.speed > 0 ? 1 : -1;
-        let currentTurnSpeed = player.turnSpeed * (1 - (speedAbs / 80) * 0.6);
-        if (keys.ArrowLeft) player.angle -= currentTurnSpeed * turnDir * ts;
-        if (keys.ArrowRight) player.angle += currentTurnSpeed * turnDir * ts;
-    }
-
-    player.x += Math.cos(player.angle) * player.speed * ts;
-    player.y += Math.sin(player.angle) * player.speed * ts;
-
-    let trackInfo = getTrackDistanceAndNormal(player);
-    let asphaltEdge = (trackWidth / 2) - 20; 
-    let wallEdge = asphaltEdge + 180; 
-
-    if (trackInfo.dist > wallEdge) {
-        let normalAngle = Math.atan2(trackInfo.normal.y, trackInfo.normal.x);
-        player.angle = 2 * normalAngle - Math.PI - player.angle; 
-        player.speed *= 0.4; 
-        player.x += trackInfo.normal.x * (trackInfo.dist - wallEdge + 5); 
-        player.y += trackInfo.normal.y * (trackInfo.dist - wallEdge + 5);
-
-        if (speedAbs > 5 && Date.now() - lastCrashTime > 200) { 
-            playCrashSound(); 
-            createImpactParticles(player.x, player.y, trackInfo.normal);
-            lastCrashTime = Date.now(); 
-        }
-    } else if (trackInfo.dist > asphaltEdge) {
-        player.speed *= Math.pow(0.975, ts); 
-    }
-
-    if (player.speed > 90) player.speed = 90;
-    if (player.speed < -20) player.speed = -20;
-    
-    updateAudio(player.speed, currentRPM);
-
-    if (!player.finished) {
-        // Checkpoint-based lap detection
-        const nextCheckpoint = (player.currentCheckpoint + 1) % checkpoints.length;
-        
-        if (checkCheckpointProximity(player, nextCheckpoint) && player.speed > 0.5) {
-            player.currentCheckpoint = nextCheckpoint;
-            
-            // If we just passed checkpoint 0 (finish line) and aren't on first lap, complete a lap
-            if (nextCheckpoint === 0 && player.currentCheckpoint === 0) {
-                const lapTime = Date.now() - player.lapStartTime;
-                const finishedLap = player.lap;
-                player.lap++;
-                player.lapStartTime = Date.now();
-                recordLapTime(player.name, player.color, lapTime, finishedLap);
-                
-                if (player.lap > totalLaps) {
-                    player.finished = true;
-                    player.lap = totalLaps;
-                    triggerFinish(player.name);
+                function drawParticles(ctx, ts) {
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        let p = particles[i];
+                        p.x += p.vx * ts; p.y += p.vy * ts;
+                        p.life -= 0.05 * ts;
+                        if (p.life <= 0) { particles.splice(i, 1); }
+                        else {
+                            ctx.globalAlpha = Math.max(0, p.life);
+                            ctx.fillStyle = p.color;
+                            ctx.fillRect(p.x, p.y, p.color === '#111' ? 6 : 3, p.color === '#111' ? 6 : 3);
+                        }
+                    }
+                    ctx.globalAlpha = 1.0;
                 }
-            }
-        }
-    }
-}
 
-function drawF1Car(ctx, x, y, angle, color, name) {
-    ctx.save();
-    ctx.translate(x, y);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 24px Arial'; 
-    ctx.textAlign = 'center';
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = '#000';
-    ctx.fillText(name, 0, -45);
-    ctx.shadowBlur = 0; 
-    
-    ctx.rotate(angle);
-    ctx.fillStyle = '#111'; 
-    ctx.fillRect(15, -22, 15, 8); ctx.fillRect(15, 14, 15, 8); 
-    ctx.fillRect(-25, -22, 15, 10); ctx.fillRect(-25, 12, 15, 10);
-    ctx.fillStyle = color; 
-    ctx.beginPath(); ctx.moveTo(35, -5); ctx.lineTo(35, 5); ctx.lineTo(10, 10); ctx.lineTo(-20, 12); 
-    ctx.lineTo(-35, 8); ctx.lineTo(-35, -8); ctx.lineTo(-20, -12); ctx.lineTo(10, -10); ctx.fill();
-    ctx.fillStyle = '#222'; 
-    ctx.fillRect(25, -18, 8, 36); ctx.fillRect(-40, -18, 10, 36);
-    ctx.fillStyle = '#000'; 
-    ctx.beginPath(); ctx.arc(-5, 0, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-}
+                // --- FIZIKA ÉS VÁLTÓ ---
+                function updatePhysics(ts) {
+                    for (let id in gameData) {
+                        if (id !== myId) {
+                            let p = gameData[id];
+                            if (p.targetX !== undefined && p.targetY !== undefined) {
+                                // Ha a különbség túl nagy, azonnal ugorjon oda (pl. verseny újraindulása)
+                                if (Math.abs(p.targetX - p.x) > 500 || Math.abs(p.targetY - p.y) > 500) {
+                                    p.x = p.targetX;
+                                    p.y = p.targetY;
+                                    p.angle = p.targetAngle;
+                                } else {
+                                    // Különben sima átmenet (lerp)
+                                    p.x = lerp(p.x, p.targetX, 0.3 * ts);
+                                    p.y = lerp(p.y, p.targetY, 0.3 * ts);
+                                    p.angle = lerpAngle(p.angle, p.targetAngle, 0.3 * ts);
+                                }
+                            }
+                        }
+                    }
 
-function drawScene() {
-    ctx.fillStyle = '#2b5c23';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
-    
-    let followX = player.x, followY = player.y;
-    if (player.finished) {
-        // Spectate an active player
-        for (let id in gameData) {
-            if (id !== myId && !gameData[id].finished) {
-                followX = gameData[id].x;
-                followY = gameData[id].y;
-                break;
-            }
-        }
-    }
-    const camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
-    const camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
-    ctx.translate(camX, camY);
-    
-    drawCircuit();
-    drawParticles(ctx, 1);
-    for (let id in gameData) {
-        if (id !== myId) {
-            const p = gameData[id];
-            drawF1Car(ctx, p.x, p.y, p.angle, p.color, p.name);
-        }
-    }
-    drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
-    ctx.restore();
-}
+                    if (player.finished) return; // Freeze finished players
 
-function drawCircuit() {
-    if(track.length === 0) return;
-    
-    ctx.lineJoin = 'round'; 
-    ctx.lineCap = 'round';
-    
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 400; ctx.strokeStyle = '#111'; ctx.stroke();
+                    let speedAbs = Math.abs(player.speed);
+                    let activeGear;
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#c4aa62'; ctx.stroke();
+                    if (player.speed < -0.5) { activeGear = { id: 'R', min: 0, max: 25, rate: 0.003 }; }
+                    else if (speedAbs < 12) { activeGear = { id: '1', min: 0, max: 16, rate: 0.0025 }; }
+                    else if (speedAbs < 22) { activeGear = { id: '2', min: 11, max: 27, rate: 0.0022 }; }
+                    else if (speedAbs < 32) { activeGear = { id: '3', min: 22, max: 38, rate: 0.002 }; }
+                    else if (speedAbs < 42) { activeGear = { id: '4', min: 33, max: 49, rate: 0.0017 }; }
+                    else if (speedAbs < 52) { activeGear = { id: '5', min: 44, max: 60, rate: 0.0012 }; }
+                    else if (speedAbs < 62) { activeGear = { id: '6', min: 54, max: 66, rate: 0.0009 }; }
+                    else if (speedAbs < 72) { activeGear = { id: '7', min: 64, max: 74, rate: 0.0007 }; }
+                    else { activeGear = { id: '8', min: 70, max: 90, rate: 0.0005 }; }
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 40; ctx.strokeStyle = '#fff'; ctx.stroke();
+                    currentGearDisplay = activeGear.id;
+                    currentRPM = (speedAbs - activeGear.min) / (activeGear.max - activeGear.min);
+                    currentRPM = Math.max(0, Math.min(1, currentRPM));
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 40; 
-    ctx.strokeStyle = '#e10600';
-    
-    ctx.lineCap = 'butt'; 
-    ctx.setLineDash([60, 60]); 
-    ctx.stroke(); 
-    
-    ctx.setLineDash([]); 
-    ctx.lineCap = 'round'; 
+                    if (keys.ArrowUp) {
+                        if (player.speed < 0) { player.speed += 0.8 * ts; }
+                        else { player.speed += (80 - player.speed) * activeGear.rate * ts; }
+                    } else if (keys.ArrowDown) {
+                        if (player.speed > 0) { player.speed -= 0.8 * ts; }
+                        else { player.speed += (-25 - player.speed) * activeGear.rate * ts; }
+                    } else {
+                        player.speed *= Math.pow(player.friction, ts);
+                    }
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for(let i=1; i<track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth; ctx.strokeStyle = '#444'; ctx.stroke();
+                    if (Math.abs(player.speed) > 0.5) {
+                        let turnDir = player.speed > 0 ? 1 : -1;
+                        let currentTurnSpeed = player.turnSpeed * (1 - (speedAbs / 80) * 0.6);
+                        if (keys.ArrowLeft) player.angle -= currentTurnSpeed * turnDir * ts;
+                        if (keys.ArrowRight) player.angle += currentTurnSpeed * turnDir * ts;
+                    }
 
-    ctx.save();
-    ctx.translate(track[0].x, track[0].y);
-    let dx = track[1].x - track[0].x; let dy = track[1].y - track[0].y;
-    ctx.rotate(Math.atan2(dy, dx));
-    ctx.fillStyle = '#fff';
-    for(let i = -trackWidth/2; i < trackWidth/2; i += 30) {
-        ctx.fillRect(0, i, 15, 15); ctx.fillRect(15, i+15, 15, 15);
-    }
-    ctx.restore();
-}
+                    player.x += Math.cos(player.angle) * player.speed * ts;
+                    player.y += Math.sin(player.angle) * player.speed * ts;
 
-function gameLoop(timestamp) {
-    if (!gameActive) return;
-    requestAnimationFrame(gameLoop);
-    
-    let dt = timestamp - lastTime;
-    if (dt > 100) dt = 16.66; 
-    lastTime = timestamp;
-    let timeScale = dt / 16.666; 
+                    let trackInfo = getTrackDistanceAndNormal(player);
+                    let asphaltEdge = (trackWidth / 2) - 20;
+                    let wallEdge = asphaltEdge + 180;
 
-    updatePhysics(timeScale);
-    
-    document.getElementById('speedVal').innerText = Math.abs(Math.round(player.speed * 4.6));
-    let gearEl = document.getElementById('gearVal');
-    if(gearEl) gearEl.innerText = currentGearDisplay;
-    
-    // HUD Körszámláló frissítése
-    let lapEl = document.getElementById('lapVal');
-    if(lapEl) lapEl.innerText = player.lap;
-    
-    // Update leaderboard
-    updateLeaderboardUI();
+                    if (trackInfo.dist > wallEdge) {
+                        let normalAngle = Math.atan2(trackInfo.normal.y, trackInfo.normal.x);
+                        player.angle = 2 * normalAngle - Math.PI - player.angle;
+                        player.speed *= 0.4;
+                        player.x += trackInfo.normal.x * (trackInfo.dist - wallEdge + 5);
+                        player.y += trackInfo.normal.y * (trackInfo.dist - wallEdge + 5);
 
-    ctx.fillStyle = '#2b5c23'; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height); 
-    
-    ctx.save();
-    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
-    
-    let followX = player.x, followY = player.y;
-    if (player.finished) {
-        // Spectate an active player
-        for (let id in gameData) {
-            if (id !== myId && !gameData[id].finished) {
-                followX = gameData[id].x;
-                followY = gameData[id].y;
-                break;
-            }
-        }
-    }
-    let camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
-    let camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
-    ctx.translate(camX, camY);
+                        if (speedAbs > 5 && Date.now() - lastCrashTime > 200) {
+                            playCrashSound();
+                            createImpactParticles(player.x, player.y, trackInfo.normal);
+                            lastCrashTime = Date.now();
+                        }
+                    } else if (trackInfo.dist > asphaltEdge) {
+                        player.speed *= Math.pow(0.975, ts);
+                    }
 
-    drawCircuit();
-    drawParticles(ctx, timeScale);
+                    if (player.speed > 90) player.speed = 90;
+                    if (player.speed < -20) player.speed = -20;
 
-    for (let id in gameData) {
-        if (id !== myId) {
-            let p = gameData[id];
-            drawF1Car(ctx, p.x, p.y, p.angle, p.color, p.name);
-        }
-    }
-    drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
-    
-    ctx.restore();
-}
+                    updateAudio(player.speed, currentRPM);
 
-let lastTime = 0;
+                    if (!player.finished) {
+                        // Checkpoint-based lap detection
+                        const nextCheckpoint = (player.currentCheckpoint + 1) % checkpoints.length;
 
-function backToMenu() {
-    if (peer) peer.destroy();
-    if (hostConn) hostConn.close();
-    sessionStorage.clear();
-    window.location.href = './index.html';
-}
+                        if (checkCheckpointProximity(player, nextCheckpoint) && player.speed > 0.5) {
+                            player.currentCheckpoint = nextCheckpoint;
 
-// Game startup
-window.addEventListener('load', () => {
-    initializeGame();
-});
+                            // If we just passed checkpoint 0 (finish line) and aren't on first lap, complete a lap
+                            if (nextCheckpoint === 0 && player.currentCheckpoint === 0) {
+                                const lapTime = Date.now() - player.lapStartTime;
+                                const finishedLap = player.lap;
+                                player.lap++;
+                                player.lapStartTime = Date.now();
+                                recordLapTime(player.name, player.color, lapTime, finishedLap);
+
+                                if (player.lap > totalLaps) {
+                                    player.finished = true;
+                                    player.lap = totalLaps;
+                                    triggerFinish(player.name);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                function drawF1Car(ctx, x, y, angle, color, name) {
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = '#000';
+                    ctx.fillText(name, 0, -45);
+                    ctx.shadowBlur = 0;
+
+                    ctx.rotate(angle);
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(15, -22, 15, 8); ctx.fillRect(15, 14, 15, 8);
+                    ctx.fillRect(-25, -22, 15, 10); ctx.fillRect(-25, 12, 15, 10);
+                    ctx.fillStyle = color;
+                    ctx.beginPath(); ctx.moveTo(35, -5); ctx.lineTo(35, 5); ctx.lineTo(10, 10); ctx.lineTo(-20, 12);
+                    ctx.lineTo(-35, 8); ctx.lineTo(-35, -8); ctx.lineTo(-20, -12); ctx.lineTo(10, -10); ctx.fill();
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(25, -18, 8, 36); ctx.fillRect(-40, -18, 10, 36);
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath(); ctx.arc(-5, 0, 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                }
+
+                function drawScene() {
+                    ctx.fillStyle = '#2b5c23';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.save();
+                    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+
+                    let followX = player.x, followY = player.y;
+                    if (player.finished) {
+                        // Spectate an active player
+                        for (let id in gameData) {
+                            if (id !== myId && !gameData[id].finished) {
+                                followX = gameData[id].x;
+                                followY = gameData[id].y;
+                                break;
+                            }
+                        }
+                    }
+                    const camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
+                    const camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
+                    ctx.translate(camX, camY);
+
+                    drawCircuit();
+                    drawParticles(ctx, 1);
+                    for (let id in gameData) {
+                        if (id !== myId) {
+                            const p = gameData[id];
+                            drawF1Car(ctx, p.x, p.y, p.angle, p.color, p.name);
+                        }
+                    }
+                    drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
+                    ctx.restore();
+                }
+
+                function drawCircuit() {
+                    if (track.length === 0) return;
+
+                    ctx.lineJoin = 'round';
+                    ctx.lineCap = 'round';
+
+                    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
+                    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
+                    ctx.lineWidth = trackWidth + 400; ctx.strokeStyle = '#111'; ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
+                    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
+                    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#c4aa62'; ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
+                    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
+                    ctx.lineWidth = trackWidth + 40; ctx.strokeStyle = '#fff'; ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
+                    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
+                    ctx.lineWidth = trackWidth + 40;
+                    ctx.strokeStyle = '#e10600';
+
+                    ctx.lineCap = 'butt';
+                    ctx.setLineDash([60, 60]);
+                    ctx.stroke();
+
+                    ctx.setLineDash([]);
+                    ctx.lineCap = 'round';
+
+                    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
+                    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
+                    ctx.lineWidth = trackWidth; ctx.strokeStyle = '#444'; ctx.stroke();
+
+                    ctx.save();
+                    ctx.translate(track[0].x, track[0].y);
+                    let dx = track[1].x - track[0].x; let dy = track[1].y - track[0].y;
+                    ctx.rotate(Math.atan2(dy, dx));
+                    ctx.fillStyle = '#fff';
+                    for (let i = -trackWidth / 2; i < trackWidth / 2; i += 30) {
+                        ctx.fillRect(0, i, 15, 15); ctx.fillRect(15, i + 15, 15, 15);
+                    }
+                    ctx.restore();
+                }
+
+                function gameLoop(timestamp) {
+                    if (!gameActive) return;
+                    requestAnimationFrame(gameLoop);
+
+                    let dt = timestamp - lastTime;
+                    if (dt > 100) dt = 16.66;
+                    lastTime = timestamp;
+                    let timeScale = dt / 16.666;
+
+                    updatePhysics(timeScale);
+
+                    document.getElementById('speedVal').innerText = Math.abs(Math.round(player.speed * 4.6));
+                    let gearEl = document.getElementById('gearVal');
+                    if (gearEl) gearEl.innerText = currentGearDisplay;
+
+                    // HUD Körszámláló frissítése
+                    let lapEl = document.getElementById('lapVal');
+                    if (lapEl) lapEl.innerText = player.lap;
+
+                    // Update leaderboard
+                    updateLeaderboardUI();
+
+                    ctx.fillStyle = '#2b5c23';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.save();
+                    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+
+                    let followX = player.x, followY = player.y;
+                    if (player.finished) {
+                        // Spectate an active player
+                        for (let id in gameData) {
+                            if (id !== myId && !gameData[id].finished) {
+                                followX = gameData[id].x;
+                                followY = gameData[id].y;
+                                break;
+                            }
+                        }
+                    }
+                    let camX = (canvas.width / 2) / CAMERA_ZOOM - followX;
+                    let camY = (canvas.height / 2) / CAMERA_ZOOM - followY;
+                    ctx.translate(camX, camY);
+
+                    drawCircuit();
+                    drawParticles(ctx, timeScale);
+
+                    for (let id in gameData) {
+                        if (id !== myId) {
+                            let p = gameData[id];
+                            drawF1Car(ctx, p.x, p.y, p.angle, p.color, p.name);
+                        }
+                    }
+                    drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
+
+                    ctx.restore();
+                }
+
+                let lastTime = 0;
+
+                function backToMenu() {
+                    if (peer) peer.destroy();
+                    if (hostConn) hostConn.close();
+                    sessionStorage.clear();
+                    window.location.href = './index.html';
+                }
+
+                // Game startup
+                window.addEventListener('load', () => {
+                    initializeGame();
+                });
