@@ -5,6 +5,7 @@ window.addEventListener('resize', resize); resize();
 
 // Globális változók
 let track = [];
+let checkpoints = [];
 let totalLaps = 3;
 const trackWidth = 650; 
 let gameActive = false;
@@ -16,6 +17,7 @@ let countdownActive = false;
 let countdownSeconds = 3;
 let globalWinner = null;
 let globalWinnerTime = Infinity;
+const CHECKPOINT_PROXIMITY = 400; // Distance threshold to consider passing a checkpoint
 
 function playCountdownTone(freq, duration = 180) {
     if (!audioCtx) initAudio();
@@ -123,7 +125,7 @@ function beginRace() {
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, name: player.name, color: player.color };
+                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint };
                 for (let id in clients) {
                     if (clients[id] && clients[id].open) {
                         clients[id].send({ type: 'state', players: gameData });
@@ -134,7 +136,7 @@ function beginRace() {
     } else if (hostConn) {
         setInterval(() => {
             if (gameActive && hostConn && hostConn.open) {
-                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap });
+                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, lap: player.lap, currentCheckpoint: player.currentCheckpoint });
             }
         }, 50);
     }
@@ -234,7 +236,7 @@ function recordLapTime(name, color, lapTime, lapNumber) {
 }
 
 // Játékos
-const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false };
+const player = { x: 0, y: 0, angle: 0, speed: 0, friction: 0.97, turnSpeed: 0.05, color: '#e10600', name: 'Pilóta', lap: 1, halfway: false, finished: false, currentCheckpoint: 0, checkpointTimes: [] };
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
 window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
@@ -275,6 +277,32 @@ function generateSmoothCurve(path, iterations = 4) {
 }
 
 
+function generateCheckpointsFromTrack() {
+    if (track.length === 0) return;
+    checkpoints = [];
+    
+    // Generate checkpoints every N points along the track (4-5 checkpoints typically)
+    const checkpointInterval = Math.max(1, Math.floor(track.length / 5));
+    
+    for (let i = 0; i < track.length; i += checkpointInterval) {
+        checkpoints.push({
+            index: checkpoints.length,
+            x: track[i].x,
+            y: track[i].y,
+            trackIndex: i
+        });
+    }
+    
+    // Always ensure checkpoint 0 is at the start/finish
+    checkpoints[0] = {
+        index: 0,
+        x: track[0].x,
+        y: track[0].y,
+        trackIndex: 0
+    };
+    
+    console.log(`Generated ${checkpoints.length} checkpoints for track`);
+}
 function initializeGame() {
     const gameDataStr = sessionStorage.getItem('gameData');
     if (gameDataStr) {
@@ -288,6 +316,7 @@ function initializeGame() {
             const points = gameDataFromLobby.track.data?.points || gameDataFromLobby.track.points;
             if (Array.isArray(points)) {
                 track = generateSmoothCurve(points, 5);
+                generateCheckpointsFromTrack();
             }
         }
 
@@ -366,7 +395,7 @@ function initPeer() {
             }
             clients[c.peer] = c;
             // Alapértelmezett értékek megadása, ha még nincs pozíció
-            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1 };
+            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1, currentCheckpoint: 0 };
         });
 
         c.on('data', (data) => {
@@ -376,6 +405,7 @@ function initPeer() {
                 gameData[c.peer].angle = data.angle;
                 gameData[c.peer].finished = data.finished;
                 gameData[c.peer].lap = data.lap;
+                gameData[c.peer].currentCheckpoint = data.currentCheckpoint;
                 // Kliens nevének és színének frissítése, amint megérkezik
                 if (data.name) gameData[c.peer].name = data.name; 
                 if (data.color) gameData[c.peer].color = data.color; 
@@ -414,7 +444,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
     hostConn.on('open', () => {
         console.log("Sikeresen csatlakozva a Hosthoz!");
         // Amint sikeres a csatlakozás, a kliens beküldi a nevét és színét!
-        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, name: player.name, color: player.color });
+        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
     });
 
     hostConn.on('data', (data) => {
@@ -466,6 +496,7 @@ function startGame() {
     
     player.x = track[0].x;
     player.y = track[0].y;
+    player.currentCheckpoint = 0;
     
     if (track.length > 1) {
         let dx = track[1].x - track[0].x;
@@ -476,7 +507,7 @@ function startGame() {
     lapHistory = [];
     bestLapTime = null;
     updateLapHistoryUI();
-    gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap };
+    gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, currentCheckpoint: player.currentCheckpoint };
     
     drawScene();
     startCountdown();
@@ -550,7 +581,7 @@ function restartGame() {
 
     // 2. SAJÁT JÁTÉKOS RESETELÉSE
     player.lap = 1;
-    player.halfway = false;
+    player.currentCheckpoint = 0;
     player.finished = false;
     player.speed = 0;
     player.x = track[0].x;
@@ -566,6 +597,7 @@ function restartGame() {
     for (let id in gameData) {
         gameData[id].finished = false;
         gameData[id].lap = 1;
+        gameData[id].currentCheckpoint = 0;
     }
 
     document.getElementById('hud').style.display = 'block';
@@ -603,6 +635,98 @@ function getTrackDistanceAndNormal(p) {
         if (dist < minDist) { minDist = dist; normal = { x: -dx/dist, y: -dy/dist }; closestIndex = i; }
     }
     return { dist: minDist, normal: normal, index: closestIndex };
+}
+
+// Check if player passed a checkpoint
+function checkCheckpointProximity(playerPos, checkpointIndex) {
+    if (checkpointIndex >= checkpoints.length) return false;
+    const cp = checkpoints[checkpointIndex];
+    const dx = playerPos.x - cp.x;
+    const dy = playerPos.y - cp.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < CHECKPOINT_PROXIMITY;
+}
+
+// Calculate current leaderboard based on checkpoint progress and times
+function calculateLeaderboard() {
+    const allPlayers = [
+        { id: myId, ...player, isSelf: true }
+    ];
+    
+    for (let id in gameData) {
+        if (id !== myId) {
+            allPlayers.push({ id: id, ...gameData[id], isSelf: false });
+        }
+    }
+    
+    // Sort by: finished status desc, lap desc, currentCheckpoint desc
+    allPlayers.sort((a, b) => {
+        if (b.finished !== a.finished) return b.finished - a.finished; // Finished players first
+        if (b.lap !== a.lap) return b.lap - a.lap; // Higher lap
+        if (b.currentCheckpoint !== a.currentCheckpoint) return b.currentCheckpoint - a.currentCheckpoint; // More checkpoints passed
+        return 0;
+    });
+    
+    return allPlayers;
+}
+
+// Update the leaderboard UI
+function updateLeaderboardUI() {
+    const leaderboard = calculateLeaderboard();
+    const leaderEl = document.getElementById('leaderboard');
+    if (!leaderEl) return;
+
+    let html = '';
+
+    leaderboard.slice(0, 10).forEach((p, idx) => {
+        const position = idx + 1;
+        // Calculate time gap relative to the next player (not the leader)
+        const nextPlayer = leaderboard[idx + 1];
+        const timeDelta = idx === leaderboard.length - 1 ? '' : calculateTimeGap(p, nextPlayer);
+
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: ${idx % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)'}; border: ${p.isSelf ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,255,255,0.08)'}; box-shadow: inset 0 0 0 0 rgba(255,255,255,0.04); margin-bottom: 6px; font-size: 14px;">
+                <span style="color: #fff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px;">${position}. ${p.name}</span>
+                <span style="font-size: 12px; font-weight: bold; margin-left: 10px; white-space: nowrap; color: #8cff8c;">${timeDelta}</span>
+            </div>
+        `;
+    });
+
+    // Find or create the list container
+    let listEl = leaderEl.querySelector('#leaderboardList');
+    if (!listEl) {
+        leaderEl.innerHTML = '<div id="leaderboardList" style="display: flex; flex-direction: column; gap: 8px;">' + html + '</div>';
+    } else {
+        listEl.innerHTML = html;
+    }
+}
+
+// Calculate time gap between two players
+function calculateTimeGap(player1, player2) {
+    if (!player2) return '';
+
+    const lapDiff = player1.lap - player2.lap;
+    if (lapDiff > 1) {
+        return `+${lapDiff} ${lapDiff === 1 ? 'lap' : 'laps'}`;
+    }
+    if (lapDiff === 1) {
+        return '+1 lap';
+    }
+    if (lapDiff < 0) {
+        return `-${Math.abs(lapDiff)} ${Math.abs(lapDiff) === 1 ? 'lap' : 'laps'}`;
+    }
+
+    // Same lap, check checkpoint difference
+    const cpDiff = player1.currentCheckpoint - player2.currentCheckpoint;
+    if (cpDiff > 0) {
+        return `+${cpDiff} CP`;
+    }
+    if (cpDiff < 0) {
+        return `-${Math.abs(cpDiff)} CP`;
+    }
+
+    // Same position
+    return '';
 }
 
 function createImpactParticles(x, y, normal) {
@@ -699,24 +823,25 @@ function updatePhysics(ts) {
     updateAudio(player.speed, currentRPM);
 
     if (!player.finished) {
-        let halfTrack = Math.floor(track.length / 2);
+        // Checkpoint-based lap detection
+        const nextCheckpoint = (player.currentCheckpoint + 1) % checkpoints.length;
         
-        if (trackInfo.index > halfTrack) {
-            player.halfway = true;
-        }
-
-        if (trackInfo.index < 20 && player.halfway && player.speed > 0) {
-            const lapTime = Date.now() - player.lapStartTime;
-            const finishedLap = player.lap;
-            player.lap++;
-            player.halfway = false; 
-            player.lapStartTime = Date.now();
-            recordLapTime(player.name, player.color, lapTime, finishedLap);
+        if (checkCheckpointProximity(player, nextCheckpoint) && player.speed > 0.5) {
+            player.currentCheckpoint = nextCheckpoint;
             
-            if (player.lap > totalLaps) {
-                player.finished = true;
-                player.lap = totalLaps;
-                triggerFinish(player.name);
+            // If we just passed checkpoint 0 (finish line) and aren't on first lap, complete a lap
+            if (nextCheckpoint === 0 && player.currentCheckpoint === 0) {
+                const lapTime = Date.now() - player.lapStartTime;
+                const finishedLap = player.lap;
+                player.lap++;
+                player.lapStartTime = Date.now();
+                recordLapTime(player.name, player.color, lapTime, finishedLap);
+                
+                if (player.lap > totalLaps) {
+                    player.finished = true;
+                    player.lap = totalLaps;
+                    triggerFinish(player.name);
+                }
             }
         }
     }
@@ -844,6 +969,9 @@ function gameLoop(timestamp) {
     // HUD Körszámláló frissítése
     let lapEl = document.getElementById('lapVal');
     if(lapEl) lapEl.innerText = player.lap;
+    
+    // Update leaderboard
+    updateLeaderboardUI();
 
     ctx.fillStyle = '#2b5c23'; 
     ctx.fillRect(0, 0, canvas.width, canvas.height); 

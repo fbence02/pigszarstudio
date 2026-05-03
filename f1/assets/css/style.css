@@ -55,7 +55,7 @@ button:active { transform: scale(0.98); }
 .player-count { font-size: 18px; color: #0f0; margin-top: 10px; }
 
 #hud { 
-    position: absolute; top: 20px; left: 20px; z-index: 5; display: none; 
+    position: absolute; bottom: 20px; left: 50%; top: auto; transform: translateX(-50%); z-index: 5; display: none; 
     color: white; text-shadow: 2px 2px 0 #000; font-size: 28px; font-weight: bold; font-style: italic; pointer-events: none; 
 }
 
