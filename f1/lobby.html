@@ -91,7 +91,6 @@
               padding: 12px;
               font-size: 16px;
               width: 100%;
-              text-transform: uppercase;
               outline: none;
               border-radius: 5px;
               cursor: pointer;
@@ -230,6 +229,28 @@
       let hostName = "Főnök";
       let availableTracks = [];
       let hostColor = "#e10600";
+
+      // Load saved player data from localStorage
+      function loadPlayerData() {
+        const savedName = localStorage.getItem("playerName");
+        const savedColor = localStorage.getItem("playerColor");
+        
+        if (savedName) {
+          hostName = savedName;
+          document.getElementById("hostName").value = savedName;
+        }
+        
+        if (savedColor) {
+          hostColor = savedColor;
+          document.getElementById("hostColor").value = savedColor;
+        }
+      }
+
+      // Save player data to localStorage
+      function savePlayerData() {
+        localStorage.setItem("playerName", hostName);
+        localStorage.setItem("playerColor", hostColor);
+      }
       // Pályák betöltése
       async function fetchTrackFileList() {
         const listUrl = "./tracks/track-list.json";
@@ -376,10 +397,12 @@
 
       document.getElementById("hostName").addEventListener("input", (e) => {
         hostName = e.target.value.trim() || "Főnök";
+        savePlayerData();
       });
 
       document.getElementById("hostColor").addEventListener("input", (e) => {
         hostColor = e.target.value;
+        savePlayerData();
         updatePlayersList();
         broadcastLobbyState();
       });
@@ -560,6 +583,7 @@
       };
 
       // Inicializálás
+      loadPlayerData();
       loadAvailableTracks();
       initPeer();
     </script>

@@ -68,6 +68,28 @@
       let playerColor = '#e10600';
       let currentLobbyState = null;
 
+      // Load saved player data from localStorage
+      function loadPlayerData() {
+        const savedName = localStorage.getItem("playerName");
+        const savedColor = localStorage.getItem("playerColor");
+        
+        if (savedName) {
+          playerName = savedName;
+          document.getElementById("playerName").value = savedName;
+        }
+        
+        if (savedColor) {
+          playerColor = savedColor;
+          document.getElementById("playerColor").value = savedColor;
+        }
+      }
+
+      // Save player data to localStorage
+      function savePlayerData() {
+        localStorage.setItem("playerName", playerName);
+        localStorage.setItem("playerColor", playerColor);
+      }
+
       function initPeer() {
         peer = new Peer(prefix + myId);
         peer.on('open', () => {
@@ -80,10 +102,12 @@
 
       document.getElementById('playerName').addEventListener('input', (e) => {
         playerName = e.target.value.trim() || 'Pilóta';
+        savePlayerData();
       });
 
       document.getElementById('playerColor').addEventListener('input', (e) => {
         playerColor = e.target.value;
+        savePlayerData();
       });
 
       document.getElementById('btnConnect').onclick = () => {
@@ -190,6 +214,7 @@
       };
 
       // Initialize
+      loadPlayerData();
       initPeer();
     </script>
   </body>
