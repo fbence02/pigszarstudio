@@ -409,7 +409,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
     hostConn.on('open', () => {
         console.log("Sikeresen csatlakozva a Hosthoz!");
         // Amint sikeres a csatlakozás, a kliens beküldi a nevét és színét!
-        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
+        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, speed: player.speed, finished: false, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
     });
 
     hostConn.on('data', (data) => {
@@ -423,6 +423,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
                         gameData[id].targetX = data.players[id].x;
                         gameData[id].targetY = data.players[id].y;
                         gameData[id].targetAngle = data.players[id].angle;
+                        gameData[id].speed = data.players[id].speed;
                         gameData[id].finished = data.players[id].finished;
                         gameData[id].finishTime = data.players[id].finishTime;
                         gameData[id].lap = data.players[id].lap;

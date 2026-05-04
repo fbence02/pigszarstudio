@@ -43,6 +43,12 @@ function updatePhysics(ts) {
         if (id !== myId) {
             let p = gameData[id];
             if (p.targetX !== undefined && p.targetY !== undefined) {
+                // EXTRAPOLÁCIÓ: Kiszámoljuk a jövőbeli pozícióját a sebessége alapján
+                if (p.speed !== undefined && !p.finished) {
+                    p.targetX += Math.cos(p.targetAngle) * p.speed * ts;
+                    p.targetY += Math.sin(p.targetAngle) * p.speed * ts;
+                }
+
                 if (Math.abs(p.targetX - p.x) > 500 || Math.abs(p.targetY - p.y) > 500) {
                     p.x = p.targetX;
                     p.y = p.targetY;
