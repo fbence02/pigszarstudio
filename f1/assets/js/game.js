@@ -313,7 +313,7 @@ function initializeGame() {
         if (gameDataFromLobby.track) {
             let trackObj = gameDataFromLobby.track;
             if (typeof trackObj === 'string') {
-                try { trackObj = JSON.parse(trackObj); } catch (e) {}
+                try { trackObj = JSON.parse(trackObj); } catch (e) { }
             }
             const points = trackObj.data?.points || trackObj.points;
             if (Array.isArray(points)) {
@@ -428,6 +428,13 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
         if (data.type === 'restart') {
             restartGame();
         }
+        if (data.type === 'returnToLobby') {
+            const code = sessionStorage.getItem('lastJoinCode');
+            if (code) sessionStorage.setItem('autoJoinCode', code);
+            if (peer) peer.destroy();
+            if (hostConn) hostConn.close();
+            window.location.href = './lobby.html';
+        }
     });
 
     hostConn.on('close', () => {
@@ -482,10 +489,33 @@ function startGame() {
 }
 
 // --- ÚJ: GYŐZELEM ÉS ÚJRAINDÍTÁS FUNKCIÓK ---
+function checkAllFinished() {
+    if (!isHost) return;
+    let allFinished = true;
+    for (let id in gameData) {
+        if (!gameData[id].finished) {
+            allFinished = false;
+            break;
+        }
+    }
+    if (allFinished && globalWinner !== null) {
+        for (let id in clients) {
+            if (clients[id] && clients[id].open) {
+                clients[id].send({ type: 'allFinished', winner: globalWinner });
+            }
+        }
+        showWinScreen(globalWinner);
+    }
+}
+
 function triggerFinish(finisherName) {
     player.finished = true;
-    player.finishTime = Date.now();
     player.finishTime = Date.now() - player.raceStartTime; // Abszolút idő helyett eltelt időt használunk (Nincs több óra-elcsúszási hiba!)
+
+    if (gameData[myId]) {
+        gameData[myId].finished = true;
+        gameData[myId].finishTime = player.finishTime;
+    }
 
     if (globalWinnerTime > player.finishTime) {
         globalWinner = finisherName;
@@ -493,17 +523,12 @@ function triggerFinish(finisherName) {
     }
 
     if (isHost) {
-        for (let id in clients) clients[id].send({ type: 'finished', name: finisherName, time: player.finishTime });
-
-        // Check if all finished
-        let allFinished = true;
-        for (let id in gameData) {
-            if (!gameData[id].finished) allFinished = false;
+        for (let id in clients) {
+            if (clients[id] && clients[id].open) {
+                clients[id].send({ type: 'finished', name: finisherName, time: player.finishTime });
+            }
         }
-        if (allFinished) {
-            for (let id in clients) clients[id].send({ type: 'allFinished', winner: globalWinner });
-            showWinScreen(globalWinner);
-        }
+        checkAllFinished();
     } else if (hostConn && hostConn.open) {
         hostConn.send({ type: 'finished', name: finisherName, time: player.finishTime });
     }
@@ -529,8 +554,13 @@ function showWinScreen(winnerName) {
     winMenu.innerHTML = `
         <h1 style="font-size: 40px; margin-bottom: 10px;">🏁 KOCKÁS ZÁSZLÓ! 🏁</h1>
         <p style="font-size: 26px; color: #0f0; font-weight: bold; margin-bottom: 30px;">A győztes: ${winnerName}!</p>
-        ${isHost ? '<button id="btnRestart" onclick="restartGame()">Új Verseny Indítása</button>' : '<p style="color: #aaa; font-weight: bold;">Várakozás a Hostra a folytatáshoz...</p>'}
-        <button id="btnMenu" onclick="backToMenu()" class="secondary-btn" style="margin-top: 10px;">Menü</button>
+        ${isHost ? `
+            <div style="display: flex; gap: 15px; justify-content: center; flex-direction: column; align-items: center;">
+                <button id="btnRestart" onclick="restartGame()" style="padding: 12px 24px; font-size: 18px; background: #1fc800; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; max-width: 300px;">Új Verseny Indítása</button>
+                <button id="btnLobby" onclick="returnToLobbyHost()" style="padding: 12px 24px; font-size: 18px; background: #ff9800; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; max-width: 300px;">Vissza a lobbyba</button>
+            </div>
+        ` : '<p style="color: #aaa; font-weight: bold;">Várakozás a Hostra a folytatáshoz vagy kilépéshez...</p>'}
+        <button id="btnMenu" onclick="backToMenu()" class="secondary-btn" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Kilépés a Főmenübe</button>
     `;
     winMenu.style.display = 'block';
 }
@@ -739,6 +769,20 @@ function backToMenu() {
     if (hostConn) hostConn.close();
     sessionStorage.clear();
     window.location.href = './index.html';
+}
+
+function returnToLobbyHost() {
+    if (isHost) {
+        for (let id in clients) {
+            if (clients[id] && clients[id].open) {
+                clients[id].send({ type: 'returnToLobby' });
+            }
+        }
+        setTimeout(() => {
+            if (peer) peer.destroy();
+            window.location.href = './lobby.html';
+        }, 500);
+    }
 }
 
 // Game startup
