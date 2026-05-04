@@ -416,7 +416,21 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
         if (data.type === 'state') {
             let myFullId = prefix + myId;
             for (let id in data.players) {
-                if (id !== myId && id !== myFullId) gameData[id] = data.players[id];
+                if (id !== myId && id !== myFullId) {
+                    if (!gameData[id]) {
+                        gameData[id] = data.players[id];
+                    } else {
+                        gameData[id].targetX = data.players[id].x;
+                        gameData[id].targetY = data.players[id].y;
+                        gameData[id].targetAngle = data.players[id].angle;
+                        gameData[id].finished = data.players[id].finished;
+                        gameData[id].finishTime = data.players[id].finishTime;
+                        gameData[id].lap = data.players[id].lap;
+                        gameData[id].currentCheckpoint = data.players[id].currentCheckpoint;
+                        if (data.players[id].name) gameData[id].name = data.players[id].name;
+                        if (data.players[id].color) gameData[id].color = data.players[id].color;
+                    }
+                }
             }
             for (let id in gameData) {
                 if (!data.players[id] && id !== myId && id !== myFullId) delete gameData[id];
