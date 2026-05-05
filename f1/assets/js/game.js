@@ -10,7 +10,7 @@ let totalLaps = 3;
 const trackWidth = 650;
 let gameActive = false;
 const MAX_PLAYERS = 10;
-const CAMERA_ZOOM = 0.65;
+var cameraZoom = 0.65;
 let lapHistory = [];
 let bestLapTime = null;
 let countdownActive = false;
@@ -468,17 +468,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
 
 
 function startGame() {
-    const hud = document.getElementById('hud');
-    const volSlider = document.getElementById('volSlider');
-
-    if (volSlider) {
-        volSlider.addEventListener('input', (e) => {
-            globalVolume = parseFloat(e.target.value);
-            updateAudio(player.speed, currentRPM);
-        });
-    }
-
-    hud.style.display = 'block';
+    document.getElementById('hud').style.display = 'block';
     gameActive = false;
 
     player.currentCheckpoint = 0;
@@ -527,6 +517,10 @@ function triggerFinish(finisherName) {
     player.finished = true;
     player.finishTime = Date.now() - player.raceStartTime; // Abszolút idő helyett eltelt időt használunk (Nincs több óra-elcsúszási hiba!)
 
+    if (typeof stopEngineSound === 'function') {
+        stopEngineSound();
+    }
+
     if (gameData[myId]) {
         gameData[myId].finished = true;
         gameData[myId].finishTime = player.finishTime;
@@ -551,6 +545,9 @@ function triggerFinish(finisherName) {
 
 function showWinScreen(winnerName) {
     gameActive = false;
+    if (typeof stopEngineSound === 'function') {
+        stopEngineSound();
+    }
     document.getElementById('hud').style.display = 'none';
 
     let winMenu = document.getElementById('winMenu');
@@ -752,20 +749,27 @@ function gameLoop(timestamp) {
         }
     }
 
-    // Sima kamera forgatás interpolálása (legrövidebb úton)
-    let angleDiff = followAngle - cameraAngle;
+    let targetAngle;
+    if (window.gameSettings && window.gameSettings.cameraLock) {
+        targetAngle = -Math.PI / 2;
+    } else {
+        targetAngle = followAngle;
+    }
+
+    let angleDiff = targetAngle - cameraAngle;
     while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
     while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
     cameraAngle += angleDiff * 0.08 * timeScale;
 
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+    ctx.scale(cameraZoom, cameraZoom);
     ctx.rotate(-cameraAngle - Math.PI / 2);
     ctx.translate(-followX, -followY);
 
     drawCircuit();
-    drawParticles(ctx, timeScale);
-
+    if (window.gameSettings && window.gameSettings.particles) {
+        drawParticles(ctx, timeScale);
+    }
     for (let id in gameData) {
         if (id !== myId) {
             let p = gameData[id];

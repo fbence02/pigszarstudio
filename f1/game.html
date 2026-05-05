@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <title>F1 P2P RACING - GAME</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/settings.css" />
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 
@@ -49,16 +50,12 @@
         id="gearVal" style="color:#e10600; font-size: 32px; font-weight: 900;">1</span> <span
         style="color:#666; margin: 0 10px;">|</span> Kör: <span id="lapVal"
         style="color:#0ff; font-size: 32px; font-weight: 900;">1</span>/<span id="totalLapsVal">3</span>
-      <div style="margin-top: 15px; font-size: 16px; text-shadow: none; pointer-events: auto;">
-        <span style="color: #fff; vertical-align: middle; font-weight: normal;">Hangerő: </span>
-        <input type="range" id="volSlider" min="0" max="1" step="0.05" value="1"
-          style="vertical-align: middle; cursor: pointer; width: 120px;">
-      </div>
     </div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
+  <script src="assets/js/settings.js"></script>
   <script src="assets/js/audio.js"></script>
   <script src="assets/js/physics.js"></script>
   <script src="assets/js/render.js"></script>

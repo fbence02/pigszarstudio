@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>F1 Track Editor - Open/Closed Fix</title>
+  <link rel="stylesheet" href="assets/css/settings.css" />
   <style>
     body,
     html {
@@ -148,7 +149,8 @@
     <!-- ÚJ: Háttérkép betöltése -->
     <div class="ui-group">
       <label for="bg-image">Háttérkép (minta):</label>
-      <input type="file" id="bg-image" accept="image/*" style="font-size: 12px; padding: 4px; background: transparent; border: none; color: #aaa;" />
+      <input type="file" id="bg-image" accept="image/*"
+        style="font-size: 12px; padding: 4px; background: transparent; border: none; color: #aaa;" />
     </div>
     <div class="ui-group" style="flex-direction: row; align-items: center; gap: 10px;">
       <label for="bg-opacity" style="width: 80px; font-size: 12px;">Átlátszóság:</label>
@@ -559,7 +561,7 @@
     resizeCanvas();
 
     // Betöltjük a példádat (automatikusan zártként kezeljük, mivel kész pálya)
-    
+
     render();
   </script>
 </body>

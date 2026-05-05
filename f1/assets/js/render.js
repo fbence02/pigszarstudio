@@ -2,6 +2,7 @@
 let particles = [];
 
 function createImpactParticles(x, y, normal) {
+    if (window.gameSettings && !window.gameSettings.particles) return;
     for (let i = 0; i < 25; i++) {
         particles.push({
             x: x, y: y,
@@ -73,7 +74,7 @@ function drawScene() {
         }
     }
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+    ctx.scale(cameraZoom, cameraZoom);
     ctx.rotate(-cameraAngle - Math.PI / 2);
     ctx.translate(-followX, -followY);
 

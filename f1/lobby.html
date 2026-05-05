@@ -1,90 +1,62 @@
 <!doctype html>
 <html lang="hu">
-  <head>
-    <meta charset="UTF-8" />
-    <title>F1 P2P RACING - HOST LOBBY</title>
-    <link rel="stylesheet" href="assets/css/style.css" />
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  </head>
-  <body>
-    <div id="ui-layer">
-      <div
-        class="menu"
-        id="lobbyMenu"
-        style="max-width: 600px; max-height: 90vh; overflow-y: auto"
-      >
-        <div style="text-align: left">
-          <a
-            href="index.html"
-            style="color: #aaa; text-decoration: none; font-size: 12px"
-            >← Vissza</a
-          >
-        </div>
 
-        <h1>BOXUTCA (HOST)</h1>
+<head>
+  <meta charset="UTF-8" />
+  <title>F1 P2P RACING - HOST LOBBY</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/settings.css" />
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="assets/js/settings.js"></script>
+</head>
 
-        <div class="setup-box">
-          <label
-            style="
+<body>
+  <div id="ui-layer">
+    <div class="menu" id="lobbyMenu" style="max-width: 600px; max-height: 90vh; overflow-y: auto">
+      <div style="text-align: left">
+        <a href="index.html" style="color: #aaa; text-decoration: none; font-size: 12px">← Vissza</a>
+      </div>
+
+      <h1>BOXUTCA (HOST)</h1>
+
+      <div class="setup-box">
+        <label style="
               color: #aaa;
               display: block;
               margin-bottom: 5px;
               font-size: 12px;
-            "
-            >FELHASZNÁLÓNÉV:</label
-          >
-          <input
-            type="text"
-            id="hostName"
-            placeholder="Vezetőnév"
-            maxlength="12"
-            value="Főnök"
-          />
+            ">FELHASZNÁLÓNÉV:</label>
+        <input type="text" id="hostName" placeholder="Vezetőnév" maxlength="12" value="Főnök" />
 
-          <label
-            style="
+        <label style="
               color: #aaa;
               display: block;
               margin: 15px 0 5px 0;
               font-size: 12px;
-            "
-            >AUTÓ SZÍNE:</label
-          >
-          <div
-            style="
+            ">AUTÓ SZÍNE:</label>
+        <div style="
               display: flex;
               align-items: center;
               justify-content: center;
               gap: 10px;
-            "
-          >
-            <input
-              type="color"
-              id="hostColor"
-              value="#e10600"
-              style="
+            ">
+          <input type="color" id="hostColor" value="#e10600" style="
                 width: 80px;
                 height: 50px;
                 cursor: pointer;
                 background: none;
                 border: 2px solid #444;
                 border-radius: 5px;
-              "
-            />
-          </div>
+              " />
+        </div>
 
-          <label
-            style="
+        <label style="
               color: #aaa;
               display: block;
               margin: 15px 0 5px 0;
               font-size: 12px;
-            "
-            >PÁLYA KIVÁLASZTÁSA:</label
-          >
-          <select
-            id="trackSelect"
-            style="
+            ">PÁLYA KIVÁLASZTÁSA:</label>
+        <select id="trackSelect" style="
               background: #000;
               border: 2px solid #444;
               color: #fff;
@@ -95,82 +67,57 @@
               border-radius: 5px;
               cursor: pointer;
               text-align: center;
-            "
-          >
-            <option value="">Betöltés...</option>
-          </select>
+            ">
+          <option value="">Betöltés...</option>
+        </select>
 
-          <label
-            style="
+        <label style="
               color: #aaa;
               display: block;
               margin: 15px 0 5px 0;
               font-size: 12px;
-            "
-            >KÖRÖK SZÁMA:</label
-          >
-          <div
-            style="display: flex; align-items: center; justify-content: center"
-          >
-            <button
-              id="btnDecreaseLaps"
-              style="width: 50px; padding: 10px; margin: 0 5px"
-            >
-              −
-            </button>
-            <span
-              id="lapCount"
-              style="
+            ">KÖRÖK SZÁMA:</label>
+        <div style="display: flex; align-items: center; justify-content: center">
+          <button id="btnDecreaseLaps" style="width: 50px; padding: 10px; margin: 0 5px">
+            −
+          </button>
+          <span id="lapCount" style="
                 font-size: 28px;
                 font-weight: bold;
                 color: #0f0;
                 min-width: 60px;
                 text-align: center;
-              "
-              >3</span
-            >
-            <button
-              id="btnIncreaseLaps"
-              style="width: 50px; padding: 10px; margin: 0 5px"
-            >
-              +
-            </button>
-          </div>
+              ">3</span>
+          <button id="btnIncreaseLaps" style="width: 50px; padding: 10px; margin: 0 5px">
+            +
+          </button>
         </div>
+      </div>
 
-        <div
-          style="
+      <div style="
             background: #1a1a1a;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
             border: 2px solid #333;
-          "
-        >
-          <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px">
-            SZERVER KÓD:
-          </p>
-          <div
-            class="code-display"
-            id="hostCode"
-            style="cursor: pointer; user-select: all"
-          >
-            ---
-          </div>
-          <p
-            style="
+          ">
+        <p style="color: #aaa; margin: 0 0 10px 0; font-size: 12px">
+          SZERVER KÓD:
+        </p>
+        <div class="code-display" id="hostCode" style="cursor: pointer; user-select: all">
+          ---
+        </div>
+        <p style="
               color: #666;
               text-align: center;
               font-size: 12px;
               margin: 10px 0 0 0;
-            "
-          >
-            Kattints a másoláshoz
-          </p>
-        </div>
+            ">
+          Kattints a másoláshoz
+        </p>
+      </div>
 
-        <div
-          style="
+      <div style="
             background: #1a1a1a;
             padding: 20px;
             border-radius: 8px;
@@ -178,414 +125,405 @@
             border: 2px solid #333;
             max-height: 250px;
             overflow-y: auto;
-          "
-        >
-          <p style="color: #aaa; margin: 0 0 15px 0; font-size: 12px">
-            CSATLAKOZOTT JÁTÉKOSOK: <span id="playerCountDisplay">1/10</span>
-          </p>
-          <div
-            id="playersList"
-            style="display: flex; flex-direction: column; gap: 8px"
-          >
-            <div
-              style="
+          ">
+        <p style="color: #aaa; margin: 0 0 15px 0; font-size: 12px">
+          CSATLAKOZOTT JÁTÉKOSOK: <span id="playerCountDisplay">1/10</span>
+        </p>
+        <div id="playersList" style="display: flex; flex-direction: column; gap: 8px">
+          <div style="
                 background: #222;
                 padding: 10px;
                 border-radius: 5px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-              "
-            >
-              <span style="color: #0f0">👑 Te (Host)</span>
-            </div>
+              ">
+            <span style="color: #0f0">👑 Te (Host)</span>
           </div>
         </div>
-
-        <button id="btnStartRace" style="margin-top: 20px; width: 100%">
-          Verseny Indítása
-        </button>
-        <button
-          id="btnBackLobby"
-          class="secondary-btn"
-          style="margin-top: 10px"
-        >
-          Kilépés
-        </button>
-
-        <div id="statusLobby" class="status-msg"></div>
       </div>
+
+      <button id="btnStartRace" style="margin-top: 20px; width: 100%">
+        Verseny Indítása
+      </button>
+      <button id="btnBackLobby" class="secondary-btn" style="margin-top: 10px">
+        Kilépés
+      </button>
+
+      <div id="statusLobby" class="status-msg"></div>
     </div>
+  </div>
 
-    <script>
-      const prefix = "F1PRO-X-";
-      const genCode = () =>
-        Math.random().toString(36).substring(2, 7).toUpperCase();
-      let myId = genCode();
-      let peer = null;
-      let clients = {};
-      let selectedTrack = null;
-      let lapCount = 3;
-      let hostName = "Főnök";
-      let availableTracks = [];
-      let hostColor = "#e10600";
+  <script>
+    const prefix = "F1PRO-X-";
+    const genCode = () =>
+      Math.random().toString(36).substring(2, 7).toUpperCase();
+    let myId = genCode();
+    let peer = null;
+    let clients = {};
+    let selectedTrack = null;
+    let lapCount = 3;
+    let hostName = "Főnök";
+    let availableTracks = [];
+    let hostColor = "#e10600";
 
-      // Load saved player data from localStorage
-      function loadPlayerData() {
-        const savedName = localStorage.getItem("playerName");
-        const savedColor = localStorage.getItem("playerColor");
-        
-        if (savedName) {
-          hostName = savedName;
-          document.getElementById("hostName").value = savedName;
-        }
-        
-        if (savedColor) {
-          hostColor = savedColor;
-          document.getElementById("hostColor").value = savedColor;
-        }
+    // Load saved player data from localStorage
+    function loadPlayerData() {
+      const savedName = localStorage.getItem("playerName");
+      const savedColor = localStorage.getItem("playerColor");
+
+      if (savedName) {
+        hostName = savedName;
+        document.getElementById("hostName").value = savedName;
       }
 
-      // Save player data to localStorage
-      function savePlayerData() {
-        localStorage.setItem("playerName", hostName);
-        localStorage.setItem("playerColor", hostColor);
+      if (savedColor) {
+        hostColor = savedColor;
+        document.getElementById("hostColor").value = savedColor;
       }
-      // Pályák betöltése
-      async function fetchTrackFileList() {
-        const listUrl = "./tracks/track-list.json";
+    }
+
+    // Save player data to localStorage
+    function savePlayerData() {
+      localStorage.setItem("playerName", hostName);
+      localStorage.setItem("playerColor", hostColor);
+    }
+    // Pályák betöltése
+    async function fetchTrackFileList() {
+      const listUrl = "./tracks/track-list.json";
+      try {
+        const response = await fetch(listUrl);
+        if (!response.ok) {
+          throw new Error(`Track list not found: ${response.status}`);
+        }
+        const json = await response.json();
+        if (!json || !Array.isArray(json.tracks)) {
+          throw new Error("Invalid track list structure");
+        }
+        return json.tracks.filter(
+          (fileName) =>
+            typeof fileName === "string" &&
+            fileName.toLowerCase().endsWith(".json"),
+        );
+      } catch (error) {
+        console.warn(
+          "Track list fetch failed, attempting directory listing:",
+          error,
+        );
         try {
-          const response = await fetch(listUrl);
+          const response = await fetch("./tracks/");
           if (!response.ok) {
-            throw new Error(`Track list not found: ${response.status}`);
+            throw new Error(`Directory listing failed: ${response.status}`);
           }
-          const json = await response.json();
-          if (!json || !Array.isArray(json.tracks)) {
-            throw new Error("Invalid track list structure");
+          const html = await response.text();
+          const files = [];
+          const regex = /href="([^"]+\.json)"/gi;
+          let match;
+          while ((match = regex.exec(html)) !== null) {
+            files.push(match[1]);
           }
-          return json.tracks.filter(
-            (fileName) =>
-              typeof fileName === "string" &&
-              fileName.toLowerCase().endsWith(".json"),
+          return [...new Set(files)];
+        } catch (dirError) {
+          console.error(
+            "Could not detect track files dynamically:",
+            dirError,
           );
-        } catch (error) {
-          console.warn(
-            "Track list fetch failed, attempting directory listing:",
-            error,
-          );
+          return [];
+        }
+      }
+    }
+
+    function isValidTrackData(trackData) {
+      if (!trackData || typeof trackData !== "object") {
+        return false;
+      }
+
+      if (!Array.isArray(trackData.points) || trackData.points.length === 0) {
+        return false;
+      }
+
+      if (
+        "laps" in trackData &&
+        (!Number.isInteger(trackData.laps) || trackData.laps < 1)
+      ) {
+        return false;
+      }
+
+      for (const point of trackData.points) {
+        if (!point || typeof point !== "object") {
+          return false;
+        }
+        if (typeof point.x !== "number" || typeof point.y !== "number") {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    async function loadAvailableTracks() {
+      try {
+        const tracks = await fetchTrackFileList();
+        for (const trackFile of tracks) {
+          if (
+            !trackFile ||
+            typeof trackFile !== "string" ||
+            !trackFile.toLowerCase().endsWith(".json")
+          ) {
+            continue;
+          }
+          if (trackFile.includes("..") || trackFile.startsWith("/")) {
+            continue;
+          }
+
           try {
-            const response = await fetch("./tracks/");
+            const response = await fetch(`./tracks/${trackFile}`);
             if (!response.ok) {
-              throw new Error(`Directory listing failed: ${response.status}`);
+              throw new Error(
+                `Failed to fetch ${trackFile}: ${response.status}`,
+              );
             }
-            const html = await response.text();
-            const files = [];
-            const regex = /href="([^"]+\.json)"/gi;
-            let match;
-            while ((match = regex.exec(html)) !== null) {
-              files.push(match[1]);
-            }
-            return [...new Set(files)];
-          } catch (dirError) {
-            console.error(
-              "Could not detect track files dynamically:",
-              dirError,
-            );
-            return [];
-          }
-        }
-      }
+            const data = await response.json();
 
-      function isValidTrackData(trackData) {
-        if (!trackData || typeof trackData !== "object") {
-          return false;
-        }
-
-        if (!Array.isArray(trackData.points) || trackData.points.length === 0) {
-          return false;
-        }
-
-        if (
-          "laps" in trackData &&
-          (!Number.isInteger(trackData.laps) || trackData.laps < 1)
-        ) {
-          return false;
-        }
-
-        for (const point of trackData.points) {
-          if (!point || typeof point !== "object") {
-            return false;
-          }
-          if (typeof point.x !== "number" || typeof point.y !== "number") {
-            return false;
-          }
-        }
-
-        return true;
-      }
-
-      async function loadAvailableTracks() {
-        try {
-          const tracks = await fetchTrackFileList();
-          for (const trackFile of tracks) {
-            if (
-              !trackFile ||
-              typeof trackFile !== "string" ||
-              !trackFile.toLowerCase().endsWith(".json")
-            ) {
-              continue;
-            }
-            if (trackFile.includes("..") || trackFile.startsWith("/")) {
+            if (!isValidTrackData(data)) {
+              console.warn("Skipped invalid track file:", trackFile);
               continue;
             }
 
-            try {
-              const response = await fetch(`./tracks/${trackFile}`);
-              if (!response.ok) {
-                throw new Error(
-                  `Failed to fetch ${trackFile}: ${response.status}`,
-                );
-              }
-              const data = await response.json();
-
-              if (!isValidTrackData(data)) {
-                console.warn("Skipped invalid track file:", trackFile);
-                continue;
-              }
-
-              availableTracks.push({
-                file: trackFile,
-                name: data.name || trackFile.replace(".json", ""),
-                laps: data.laps || 3,
-                data: data,
-              });
-            } catch (e) {
-              console.error(`Hiba a ${trackFile} betöltésekor:`, e);
-            }
+            availableTracks.push({
+              file: trackFile,
+              name: data.name || trackFile.replace(".json", ""),
+              laps: data.laps || 3,
+              data: data,
+            });
+          } catch (e) {
+            console.error(`Hiba a ${trackFile} betöltésekor:`, e);
           }
-
-          const select = document.getElementById("trackSelect");
-          select.innerHTML = "";
-          availableTracks.forEach((track, index) => {
-            const option = document.createElement("option");
-            option.value = index;
-            option.textContent = `${track.name} (${track.laps} kör)`;
-            select.appendChild(option);
-          });
-
-          if (availableTracks.length > 0) {
-            select.value = 0;
-            selectTrack(0);
-          }
-        } catch (error) {
-          console.error("Hiba a pályák betöltésekor:", error);
-          document.getElementById("statusLobby").innerText =
-            "Hiba a pályák betöltésekor!";
         }
-      }
 
-      function selectTrack(index) {
-        selectedTrack = availableTracks[index];
-        lapCount = selectedTrack.laps;
-        document.getElementById("lapCount").innerText = lapCount;
-        updateLapDisplay();
-      }
-
-      document.getElementById("trackSelect").addEventListener("change", (e) => {
-        selectTrack(parseInt(e.target.value));
-      });
-
-      document.getElementById("hostName").addEventListener("input", (e) => {
-        hostName = e.target.value.trim() || "Főnök";
-        savePlayerData();
-      });
-
-      document.getElementById("hostColor").addEventListener("input", (e) => {
-        hostColor = e.target.value;
-        savePlayerData();
-        updatePlayersList();
-        broadcastLobbyState();
-      });
-
-      document.getElementById("btnIncreaseLaps").onclick = () => {
-        lapCount = Math.min(10, lapCount + 1);
-        updateLapDisplay();
-      };
-
-      document.getElementById("btnDecreaseLaps").onclick = () => {
-        lapCount = Math.max(1, lapCount - 1);
-        updateLapDisplay();
-      };
-
-      function updateLapDisplay() {
-        document.getElementById("lapCount").innerText = lapCount;
-      }
-
-      document.getElementById("hostCode").addEventListener("click", () => {
-        const code = document.getElementById("hostCode").innerText;
-        if (code !== "---") {
-          navigator.clipboard.writeText(code).then(() => {
-            document.getElementById("statusLobby").innerText =
-              "Kód másolva a vágólapra!";
-            setTimeout(() => {
-              document.getElementById("statusLobby").innerText = "";
-            }, 2000);
-          });
-        }
-      });
-
-      function initPeer() {
-        peer = new Peer(prefix + myId);
-
-        peer.on("open", (id) => {
-          document.getElementById("hostCode").innerText = myId;
+        const select = document.getElementById("trackSelect");
+        select.innerHTML = "";
+        availableTracks.forEach((track, index) => {
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = `${track.name} (${track.laps} kör)`;
+          select.appendChild(option);
         });
 
-        peer.on("connection", (c) => {
-          if (Object.keys(clients).length >= 9) {
-            c.on("open", () => {
-              c.send({ type: "full" });
-              setTimeout(() => c.close(), 500);
-            });
-            return;
-          }
+        if (availableTracks.length > 0) {
+          select.value = 0;
+          selectTrack(0);
+        }
+      } catch (error) {
+        console.error("Hiba a pályák betöltésekor:", error);
+        document.getElementById("statusLobby").innerText =
+          "Hiba a pályák betöltésekor!";
+      }
+    }
 
+    function selectTrack(index) {
+      selectedTrack = availableTracks[index];
+      lapCount = selectedTrack.laps;
+      document.getElementById("lapCount").innerText = lapCount;
+      updateLapDisplay();
+    }
+
+    document.getElementById("trackSelect").addEventListener("change", (e) => {
+      selectTrack(parseInt(e.target.value));
+    });
+
+    document.getElementById("hostName").addEventListener("input", (e) => {
+      hostName = e.target.value.trim() || "Főnök";
+      savePlayerData();
+    });
+
+    document.getElementById("hostColor").addEventListener("input", (e) => {
+      hostColor = e.target.value;
+      savePlayerData();
+      updatePlayersList();
+      broadcastLobbyState();
+    });
+
+    document.getElementById("btnIncreaseLaps").onclick = () => {
+      lapCount = Math.min(10, lapCount + 1);
+      updateLapDisplay();
+    };
+
+    document.getElementById("btnDecreaseLaps").onclick = () => {
+      lapCount = Math.max(1, lapCount - 1);
+      updateLapDisplay();
+    };
+
+    function updateLapDisplay() {
+      document.getElementById("lapCount").innerText = lapCount;
+    }
+
+    document.getElementById("hostCode").addEventListener("click", () => {
+      const code = document.getElementById("hostCode").innerText;
+      if (code !== "---") {
+        navigator.clipboard.writeText(code).then(() => {
+          document.getElementById("statusLobby").innerText =
+            "Kód másolva a vágólapra!";
+          setTimeout(() => {
+            document.getElementById("statusLobby").innerText = "";
+          }, 2000);
+        });
+      }
+    });
+
+    function initPeer() {
+      peer = new Peer(prefix + myId);
+
+      peer.on("open", (id) => {
+        document.getElementById("hostCode").innerText = myId;
+      });
+
+      peer.on("connection", (c) => {
+        if (Object.keys(clients).length >= 9) {
           c.on("open", () => {
-            clients[c.peer] = {
-              conn: c,
-              name: "Ismeretlen",
-              color: "#fff",
-              id: c.peer,
-            };
-            updatePlayersList();
-            c.send({
-              type: "lobbyState",
-              track: selectedTrack,
-              laps: lapCount,
-              hostName: hostName,
-            });
+            c.send({ type: "full" });
+            setTimeout(() => c.close(), 500);
           });
+          return;
+        }
 
-          c.on("data", (data) => {
-            if (data.type === "join" && clients[c.peer]) {
-              clients[c.peer].name = data.name;
-              clients[c.peer].color = data.color;
-              updatePlayersList();
-              broadcastLobbyState();
-            }
-          });
-
-          c.on("close", () => {
-            delete clients[c.peer];
-            updatePlayersList();
+        c.on("open", () => {
+          clients[c.peer] = {
+            conn: c,
+            name: "Ismeretlen",
+            color: "#fff",
+            id: c.peer,
+          };
+          updatePlayersList();
+          c.send({
+            type: "lobbyState",
+            track: selectedTrack,
+            laps: lapCount,
+            hostName: hostName,
           });
         });
 
-        peer.on("error", (err) => {
-          document.getElementById("statusLobby").innerText =
-            "Hiba: " + err.type;
+        c.on("data", (data) => {
+          if (data.type === "join" && clients[c.peer]) {
+            clients[c.peer].name = data.name;
+            clients[c.peer].color = data.color;
+            updatePlayersList();
+            broadcastLobbyState();
+          }
         });
-      }
 
-      function updatePlayersList() {
-        const list = document.getElementById("playersList");
-        list.innerHTML =
-          '<div style="background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;"><span style="color: #0f0;">👑 ' +
-          hostName +
-          " (Te)</span></div>";
+        c.on("close", () => {
+          delete clients[c.peer];
+          updatePlayersList();
+        });
+      });
 
-        for (let peerId in clients) {
-          const player = clients[peerId];
-          const div = document.createElement("div");
-          div.style.cssText =
-            "background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;";
-          div.innerHTML = `
+      peer.on("error", (err) => {
+        document.getElementById("statusLobby").innerText =
+          "Hiba: " + err.type;
+      });
+    }
+
+    function updatePlayersList() {
+      const list = document.getElementById("playersList");
+      list.innerHTML =
+        '<div style="background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;"><span style="color: #0f0;">👑 ' +
+        hostName +
+        " (Te)</span></div>";
+
+      for (let peerId in clients) {
+        const player = clients[peerId];
+        const div = document.createElement("div");
+        div.style.cssText =
+          "background: #222; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;";
+        div.innerHTML = `
             <span style="color: #fff; display: flex; align-items: center; gap: 8px;">
               <span style="width: 15px; height: 15px; background: ${player.color}; border-radius: 3px;"></span>
               ${player.name}
             </span>
             <button style="width: auto; padding: 5px 10px; font-size: 12px; background: #8b0000; margin: 0;" onclick="kickPlayer('${peerId}')">Eltávolítás</button>
           `;
-          list.appendChild(div);
-        }
-
-        const playerCount = Object.keys(clients).length + 1;
-        document.getElementById("playerCountDisplay").innerText =
-          `${playerCount}/10`;
+        list.appendChild(div);
       }
 
-      function kickPlayer(peerId) {
-        if (clients[peerId]) {
-          clients[peerId].conn.send({ type: "kicked" });
-          setTimeout(() => {
-            clients[peerId].conn.close();
-            delete clients[peerId];
-            updatePlayersList();
-          }, 100);
-        }
+      const playerCount = Object.keys(clients).length + 1;
+      document.getElementById("playerCountDisplay").innerText =
+        `${playerCount}/10`;
+    }
+
+    function kickPlayer(peerId) {
+      if (clients[peerId]) {
+        clients[peerId].conn.send({ type: "kicked" });
+        setTimeout(() => {
+          clients[peerId].conn.close();
+          delete clients[peerId];
+          updatePlayersList();
+        }, 100);
       }
+    }
 
-      function broadcastLobbyState() {
-        for (let peerId in clients) {
-          clients[peerId].conn.send({
-            type: "lobbyState",
-            track: selectedTrack,
-            laps: lapCount,
-            hostName: hostName,
-            players: Object.values(clients).map((p) => ({
-              name: p.name,
-              color: p.color,
-            })),
-          });
-        }
-      }
-
-      document.getElementById("btnStartRace").onclick = () => {
-        if (!selectedTrack) {
-          document.getElementById("statusLobby").innerText =
-            "Válassz egy pályát!";
-          return;
-        }
-
-        const gameData = {
+    function broadcastLobbyState() {
+      for (let peerId in clients) {
+        clients[peerId].conn.send({
+          type: "lobbyState",
           track: selectedTrack,
           laps: lapCount,
           hostName: hostName,
-          playerColor: hostColor,
+          players: Object.values(clients).map((p) => ({
+            name: p.name,
+            color: p.color,
+          })),
+        });
+      }
+    }
+
+    document.getElementById("btnStartRace").onclick = () => {
+      if (!selectedTrack) {
+        document.getElementById("statusLobby").innerText =
+          "Válassz egy pályát!";
+        return;
+      }
+
+      const gameData = {
+        track: selectedTrack,
+        laps: lapCount,
+        hostName: hostName,
+        playerColor: hostColor,
+        hostId: myId,
+        isHost: true,
+      };
+
+      sessionStorage.setItem("gameData", JSON.stringify(gameData));
+      sessionStorage.setItem("peerId", myId);
+
+      for (let peerId in clients) {
+        clients[peerId].conn.send({
+          type: "start",
+          track: selectedTrack,
+          laps: lapCount,
+          hostName: hostName,
           hostId: myId,
-          isHost: true,
-        };
+        });
+      }
 
-        sessionStorage.setItem("gameData", JSON.stringify(gameData));
-        sessionStorage.setItem("peerId", myId);
+      sessionStorage.setItem("gameData", JSON.stringify(gameData));
+      sessionStorage.setItem("peerId", myId);
+      sessionStorage.setItem("hostConn", "null");
+      setTimeout(() => {
+        window.location.href = "./game.html";
+      }, 100);
+    };
 
-        for (let peerId in clients) {
-          clients[peerId].conn.send({
-            type: "start",
-            track: selectedTrack,
-            laps: lapCount,
-            hostName: hostName,
-            hostId: myId,
-          });
-        }
+    document.getElementById("btnBackLobby").onclick = () => {
+      if (peer) peer.destroy();
+      window.location.href = "./index.html";
+    };
 
-        sessionStorage.setItem("gameData", JSON.stringify(gameData));
-        sessionStorage.setItem("peerId", myId);
-        sessionStorage.setItem("hostConn", "null");
-        setTimeout(() => {
-          window.location.href = "./game.html";
-        }, 100);
-      };
+    // Inicializálás
+    loadPlayerData();
+    loadAvailableTracks();
+    initPeer();
+  </script>
+</body>
 
-      document.getElementById("btnBackLobby").onclick = () => {
-        if (peer) peer.destroy();
-        window.location.href = "./index.html";
-      };
-
-      // Inicializálás
-      loadPlayerData();
-      loadAvailableTracks();
-      initPeer();
-    </script>
-  </body>
 </html>

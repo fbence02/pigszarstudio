@@ -1,6 +1,6 @@
 // --- AUDIO RENDSZER ---
 let audioCtx, engineOsc, engineGain;
-let globalVolume = 1.0;
+var globalVolume = 1.0;
 
 function initAudio() {
     if (audioCtx) return;
@@ -24,6 +24,12 @@ function updateAudio(speed, rpm) {
 
     let baseVol = absSpeed > 1 ? 0.02 : 0.005;
     engineGain.gain.setTargetAtTime(baseVol * globalVolume, audioCtx.currentTime, 0.1);
+}
+
+function stopEngineSound() {
+    if (engineGain && audioCtx) {
+        engineGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+    }
 }
 
 function playCrashSound() {
