@@ -32,6 +32,29 @@ function getTrackDistanceAndNormal(p) {
 function checkCheckpointProximity(playerPos, checkpointIndex) {
     if (checkpointIndex >= checkpoints.length) return false;
     const cp = checkpoints[checkpointIndex];
+    
+    if (track && track.length > 1 && cp.trackIndex !== undefined) {
+        let p1 = track[cp.trackIndex];
+        let p2 = track[(cp.trackIndex + 1) % track.length];
+        
+        let dx = p2.x - p1.x;
+        let dy = p2.y - p1.y;   
+        let len = Math.sqrt(dx * dx + dy * dy);
+        
+        if (len > 0) {
+            dx /= len;
+            dy /= len;
+            
+            let pdx = playerPos.x - cp.x;
+            let pdy = playerPos.y - cp.y;
+            
+            let longDist = pdx * dx + pdy * dy;
+            let latDist = pdx * -dy + pdy * dx;
+            
+            return Math.abs(longDist) < 250 && Math.abs(latDist) < (trackWidth / 2 + 300);
+        }
+    }
+
     const dx = playerPos.x - cp.x;
     const dy = playerPos.y - cp.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -43,7 +66,6 @@ function updatePhysics(ts) {
         if (id !== myId) {
             let p = gameData[id];
             if (p.targetX !== undefined && p.targetY !== undefined) {
-                // EXTRAPOLÁCIÓ: Kiszámoljuk a jövőbeli pozícióját a sebessége alapján
                 if (p.speed !== undefined && !p.finished) {
                     p.targetX += Math.cos(p.targetAngle) * p.speed * ts;
                     p.targetY += Math.sin(p.targetAngle) * p.speed * ts;
