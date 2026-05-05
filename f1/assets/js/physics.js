@@ -11,9 +11,47 @@ function lerpAngle(a, b, amt) {
 }
 
 function getTrackDistanceAndNormal(p) {
-    let minDist = Infinity;
+    let minDistSq = Infinity;
     let normal = null;
     let closestIndex = 0;
+
+    // Optimizáció: Lokális keresés a jobb teljesítmény érdekében nagy pályáknál
+    if (p.lastTrackIndex !== undefined) {
+        let startIndex = p.lastTrackIndex - 40;
+        let endIndex = p.lastTrackIndex + 40;
+        for (let i = startIndex; i <= endIndex; i++) {
+            let idx = i;
+            if (idx < 0) idx += track.length - 1;
+            if (idx >= track.length - 1) idx -= track.length - 1;
+
+            let v = track[idx], w = track[idx + 1];
+            if (!v || !w) continue;
+
+            let l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
+            let t = l2 === 0 ? 0 : ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            let cx = v.x + t * (w.x - v.x);
+            let cy = v.y + t * (w.y - v.y);
+            let dx = p.x - cx, dy = p.y - cy;
+            let distSq = dx * dx + dy * dy;
+
+            if (distSq < minDistSq) {
+                minDistSq = distSq;
+                normal = { x: -dx, y: -dy };
+                closestIndex = idx;
+            }
+        }
+
+        // Ha elég közel vagyunk a pályához, elég volt a lokális keresés
+        if (minDistSq < 1500 * 1500) {
+            p.lastTrackIndex = closestIndex;
+            let minDist = Math.sqrt(minDistSq);
+            return { dist: minDist, normal: { x: normal.x / minDist, y: normal.y / minDist }, index: closestIndex };
+        }
+    }
+
+    // Ha nincs utolsó index, vagy túlságosan eltávolodott, teljes keresés
+    minDistSq = Infinity;
     for (let i = 0; i < track.length - 1; i++) {
         let v = track[i], w = track[i + 1];
         let l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
@@ -22,35 +60,37 @@ function getTrackDistanceAndNormal(p) {
         let cx = v.x + t * (w.x - v.x);
         let cy = v.y + t * (w.y - v.y);
         let dx = p.x - cx, dy = p.y - cy;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < minDist) { minDist = dist; normal = { x: -dx / dist, y: -dy / dist }; closestIndex = i; }
+        let distSq = dx * dx + dy * dy;
+        if (distSq < minDistSq) { minDistSq = distSq; normal = { x: -dx, y: -dy }; closestIndex = i; }
     }
-    if (!normal) normal = { x: 0, y: 1 };
-    return { dist: minDist, normal: normal, index: closestIndex };
+    p.lastTrackIndex = closestIndex;
+    if (!normal) normal = { x: 0, y: -1 };
+    let minDist = Math.sqrt(minDistSq);
+    return { dist: minDist, normal: { x: normal.x / minDist, y: normal.y / minDist }, index: closestIndex };
 }
 
 function checkCheckpointProximity(playerPos, checkpointIndex) {
     if (checkpointIndex >= checkpoints.length) return false;
     const cp = checkpoints[checkpointIndex];
-    
+
     if (track && track.length > 1 && cp.trackIndex !== undefined) {
         let p1 = track[cp.trackIndex];
         let p2 = track[(cp.trackIndex + 1) % track.length];
-        
+
         let dx = p2.x - p1.x;
-        let dy = p2.y - p1.y;   
+        let dy = p2.y - p1.y;
         let len = Math.sqrt(dx * dx + dy * dy);
-        
+
         if (len > 0) {
             dx /= len;
             dy /= len;
-            
+
             let pdx = playerPos.x - cp.x;
             let pdy = playerPos.y - cp.y;
-            
+
             let longDist = pdx * dx + pdy * dy;
             let latDist = pdx * -dy + pdy * dx;
-            
+
             return Math.abs(longDist) < 250 && Math.abs(latDist) < (trackWidth / 2 + 300);
         }
     }

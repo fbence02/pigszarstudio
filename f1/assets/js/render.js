@@ -89,39 +89,37 @@ function drawScene() {
     ctx.restore();
 }
 
+let trackPath = null;
+let lastTrackRef = null;
+
 function drawCircuit() {
     if (!track || track.length < 2) return;
+
+    if (!trackPath || lastTrackRef !== track) {
+        trackPath = new Path2D();
+        trackPath.moveTo(track[0].x, track[0].y);
+        for (let i = 1; i < track.length; i++) trackPath.lineTo(track[i].x, track[i].y);
+        lastTrackRef = track;
+    }
 
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 400; ctx.strokeStyle = '#111'; ctx.stroke();
+    ctx.lineWidth = trackWidth + 400; ctx.strokeStyle = '#111'; ctx.stroke(trackPath);
+    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#3498db'; ctx.stroke(trackPath);
+    ctx.lineWidth = trackWidth + 40; ctx.strokeStyle = '#fff'; ctx.stroke(trackPath);
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 360; ctx.strokeStyle = '#3498db'; ctx.stroke();
-
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth + 40; ctx.strokeStyle = '#fff'; ctx.stroke();
-
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
     ctx.lineWidth = trackWidth + 40;
     ctx.strokeStyle = '#e10600';
 
     ctx.lineCap = 'butt';
     ctx.setLineDash([60, 60]);
-    ctx.stroke();
+    ctx.stroke(trackPath);
 
     ctx.setLineDash([]);
     ctx.lineCap = 'round';
 
-    ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y);
-    for (let i = 1; i < track.length; i++) ctx.lineTo(track[i].x, track[i].y);
-    ctx.lineWidth = trackWidth; ctx.strokeStyle = '#444'; ctx.stroke();
+    ctx.lineWidth = trackWidth; ctx.strokeStyle = '#444'; ctx.stroke(trackPath);
 
     ctx.save();
     ctx.translate(track[0].x, track[0].y);

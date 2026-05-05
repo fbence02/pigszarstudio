@@ -141,8 +141,22 @@
 
     <!-- ÚJ: Fájlnév megadása -->
     <div class="ui-group">
-      <label for="filename">Fájlnév:</label>
+      <label for="filename">Pályanév:</label>
       <input type="text" id="filename" value="track_data" />
+    </div>
+
+    <!-- ÚJ: Háttérkép betöltése -->
+    <div class="ui-group">
+      <label for="bg-image">Háttérkép (minta):</label>
+      <input type="file" id="bg-image" accept="image/*" style="font-size: 12px; padding: 4px; background: transparent; border: none; color: #aaa;" />
+    </div>
+    <div class="ui-group" style="flex-direction: row; align-items: center; gap: 10px;">
+      <label for="bg-opacity" style="width: 80px; font-size: 12px;">Átlátszóság:</label>
+      <input type="range" id="bg-opacity" min="0.1" max="1" step="0.1" value="0.4" style="flex: 1;" />
+    </div>
+    <div class="ui-group" style="flex-direction: row; align-items: center; gap: 10px;">
+      <label for="bg-scale" style="width: 80px; font-size: 12px;">Méret:</label>
+      <input type="range" id="bg-scale" min="1" max="100" step="1" value="20" style="flex: 1;" />
     </div>
 
     <button id="btn-copy">JSON Másolása</button>
@@ -175,6 +189,11 @@
     const trackWidth = 650;
     let points = [];
     let isClosed = false; // ÚJ: Zárt-e a kör?
+
+    // Háttérkép beállítások
+    let backgroundImage = null;
+    let bgOpacity = 0.4;
+    let bgScale = 20.0;
 
     // Kamera beállítások
     let camera = { x: 2000, y: 1000, zoom: 0.05 };
@@ -297,6 +316,16 @@
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.scale(camera.zoom, camera.zoom);
       ctx.translate(-camera.x, -camera.y);
+
+      // Háttérkép kirajzolása a pálya alá
+      if (backgroundImage) {
+        ctx.save();
+        ctx.globalAlpha = bgOpacity;
+        const imgW = backgroundImage.width * bgScale;
+        const imgH = backgroundImage.height * bgScale;
+        ctx.drawImage(backgroundImage, -imgW / 2, -imgH / 2, imgW, imgH);
+        ctx.restore();
+      }
 
       const smoothedPath = generateSmoothCurve(points, 5, isClosed);
 
@@ -455,8 +484,9 @@
     // --- EXPORTÁLÁS ÉS UI ---
 
     function generateJSON() {
+      const trackName = document.getElementById("filename").value.trim() || "track_data";
       const laps = parseInt(document.getElementById("laps").value) || 3;
-      const data = { laps: laps, points: points };
+      const data = { name: trackName, laps: laps, points: points };
       return JSON.stringify(data, null, 4);
     }
 
@@ -482,6 +512,31 @@
       URL.revokeObjectURL(url);
     });
 
+    // Háttérkép események
+    document.getElementById("bg-image").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            backgroundImage = img;
+            render();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    document.getElementById("bg-opacity").addEventListener("input", (e) => {
+      bgOpacity = parseFloat(e.target.value);
+      render();
+    });
+    document.getElementById("bg-scale").addEventListener("input", (e) => {
+      bgScale = parseFloat(e.target.value);
+      render();
+    });
+
     // ÚJ: Pálya Kinyitása gomb logikája (Ezt csak simán másold be alá)
     document.getElementById("btn-open").addEventListener("click", () => {
       if (isClosed) {
@@ -504,32 +559,7 @@
     resizeCanvas();
 
     // Betöltjük a példádat (automatikusan zártként kezeljük, mivel kész pálya)
-    points = [
-      { x: 0, y: 0 },
-      { x: 0, y: -4000 },
-      { x: 500, y: -4500 },
-      { x: 1000, y: -4200 },
-      { x: 1200, y: -3000 },
-      { x: 3000, y: -3500 },
-      { x: 4500, y: -4500 },
-      { x: 6000, y: -4500 },
-      { x: 7500, y: -3500 },
-      { x: 7000, y: -2000 },
-      { x: 5500, y: -1500 },
-      { x: 5000, y: 500 },
-      { x: 6000, y: 1500 },
-      { x: 7500, y: 1500 },
-      { x: 8500, y: 3000 },
-      { x: 7500, y: 5000 },
-      { x: 5000, y: 6000 },
-      { x: 2500, y: 5500 },
-      { x: 1000, y: 4500 },
-      { x: 800, y: 3000 },
-      { x: 2000, y: 2500 },
-      { x: 2500, y: 1500 },
-      { x: 1500, y: 500 },
-    ];
-    isClosed = true;
+    
     render();
   </script>
 </body>
