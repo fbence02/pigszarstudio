@@ -1,0 +1,73 @@
+body {
+    margin: 0;
+    background-color: rgb(133, 145, 255);
+    font-family: 'Times New Roman', Times, serif;
+}
+
+main {
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-bottom: 20px;
+}
+
+main .alkonyatfilmekalattisor {
+    text-align: center;
+}
+
+header {
+    background-color: midnightblue;
+    padding: 15px 0;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+}
+
+nav a:hover {
+    background-color: white;
+    color: #333;
+    border-radius: 5px;
+}
+
+h1 {
+    text-align: center;
+}
+
+p {
+    font-size: large;
+}
+
+.gallery {
+    text-align: center;
+}
+
+.gallery img {
+    width: 400px;
+    margin: 10px;
+    border: 5px solid white;
+    border-radius: 10px;
+}
+
+.gallery img:hover {
+    width: 500px;
+    margin: 10px;
+    border: 5px solid white;
+    border-radius: 10px;
+}
+
+.map {
+    margin: 20px;
+    text-align: center;
+}
+
+figcaption {
+    font-size: xx-large;
+}
