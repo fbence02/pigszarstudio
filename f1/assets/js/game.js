@@ -444,7 +444,11 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
             restartGame();
         }
         if (data.type === 'returnToLobby') {
-            const code = sessionStorage.getItem('lastJoinCode');
+            // Biztosítjuk, hogy a kliens megőrizze a csatlakozási kódot a lobbyhoz
+            let code = sessionStorage.getItem('lastJoinCode');
+            if (!code && typeof gameDataFromLobby !== 'undefined' && gameDataFromLobby) {
+                code = gameDataFromLobby.joinCode || gameDataFromLobby.hostId || gameDataFromLobby.host;
+            }
             if (code) sessionStorage.setItem('autoJoinCode', code);
             if (peer) peer.destroy();
             if (hostConn) hostConn.close();
@@ -779,6 +783,11 @@ function gameLoop(timestamp) {
     drawF1Car(ctx, player.x, player.y, player.angle, player.color, player.name);
 
     ctx.restore();
+
+    // Minimap kirajzolása (képernyő koordinátákkal, miután a kamera transzformációja visszaállt)
+    if (typeof drawMinimap === 'function') {
+        drawMinimap(ctx);
+    }
 }
 
 let lastTime = 0;
