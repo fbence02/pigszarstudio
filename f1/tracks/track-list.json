@@ -1,6 +1,7 @@
 {
   "tracks": [
     "boxutca.json",
+    "hsz.json",
     "palmbeach.json",
     "twister.json",
     "rikitrack.json",
@@ -8,6 +9,7 @@
     "hungaroring.json",
     "Le Mans.json",
     "ultra hard.json",
-    "BELE XDD.json"
+    "BELE XDD.json",
+    "track_data.json"
   ]
 }
