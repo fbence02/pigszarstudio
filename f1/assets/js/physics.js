@@ -193,6 +193,7 @@ function updatePhysics(ts) {
 
         if (checkCheckpointProximity(player, nextCheckpoint) && player.speed > 0.5) {
             player.currentCheckpoint = nextCheckpoint;
+            recordCheckpointTime(player, nextCheckpoint);
 
             if (nextCheckpoint === 0 && player.currentCheckpoint === 0) {
                 const lapTime = Date.now() - player.lapStartTime;

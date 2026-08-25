@@ -120,6 +120,7 @@ function beginRace() {
     gameActive = true;
     player.lapStartTime = Date.now();
     player.raceStartTime = Date.now(); // ÚJ: Verseny kezdetének mérése az eltelt időhöz
+    player.checkpointTimes = { 1: { 0: 0 } };
     lapHistory = [];
     bestLapTime = null;
     updateLapHistoryUI();
@@ -127,7 +128,7 @@ function beginRace() {
     if (isHost) {
         setInterval(() => {
             if (gameActive) {
-                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint };
+                gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint, checkpointTimes: player.checkpointTimes };
                 for (let id in clients) {
                     if (clients[id] && clients[id].open) {
                         clients[id].send({ type: 'state', players: gameData });
@@ -138,7 +139,7 @@ function beginRace() {
     } else if (hostConn) {
         setInterval(() => {
             if (gameActive && hostConn && hostConn.open) {
-                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
+                hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, finished: player.finished, finishTime: player.finishTime, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint, checkpointTimes: player.checkpointTimes });
             }
         }, 50);
     }
@@ -181,6 +182,68 @@ function formatLapTime(ms) {
     const seconds = totalSeconds % 60;
     const fraction = Math.floor((ms % 1000) / 10);
     return `${minutes}:${seconds.toString().padStart(2, '0')}.${fraction.toString().padStart(2, '0')}`;
+}
+
+function getCheckpointTime(player) {
+    if (!player || !player.checkpointTimes) return null;
+    const lapTimes = player.checkpointTimes[player.lap] || {};
+    if (player.currentCheckpoint === 0) {
+        return lapTimes[0] != null ? lapTimes[0] : 0;
+    }
+    return lapTimes[player.currentCheckpoint] != null ? lapTimes[player.currentCheckpoint] : null;
+}
+
+function recordCheckpointTime(player, checkpointIndex) {
+    if (!player) return;
+    if (!player.raceStartTime) return;
+    player.checkpointTimes = player.checkpointTimes || {};
+    player.checkpointTimes[player.lap] = player.checkpointTimes[player.lap] || {};
+    player.checkpointTimes[player.lap][checkpointIndex] = Date.now() - player.raceStartTime;
+}
+
+function getPlayerPositionValue(player) {
+    if (player.finished) {
+        return [9999, 0, 0, player.finishTime || Infinity];
+    }
+    return [player.lap || 0, player.currentCheckpoint || 0, getCheckpointTime(player) || 0, 0];
+}
+
+function calculateTimeGap(ahead, behind) {
+    if (!ahead || !behind) return '';
+
+    if (ahead.finished && behind.finished) {
+        const timeDiff = Math.abs((behind.finishTime || 0) - (ahead.finishTime || 0));
+        return '+' + formatLapTime(timeDiff);
+    }
+
+    const lapDiff = ahead.lap - behind.lap;
+    if (lapDiff > 0) {
+        return '+' + lapDiff + ' lap' + (lapDiff > 1 ? 's' : '');
+    }
+
+    if (ahead.lap === behind.lap) {
+        const aheadCheckpoint = ahead.currentCheckpoint || 0;
+        const behindCheckpoint = behind.currentCheckpoint || 0;
+        const aheadTime = getCheckpointTime(ahead);
+        const behindTime = getCheckpointTime(behind);
+
+        if (aheadCheckpoint === behindCheckpoint && aheadTime != null && behindTime != null) {
+            const diff = behindTime - aheadTime;
+            return diff >= 0 ? '+' + formatLapTime(diff) : '-' + formatLapTime(-diff);
+        }
+
+        if (behindTime != null && aheadTime != null) {
+            const diff = behindTime - aheadTime;
+            return diff >= 0 ? '+' + formatLapTime(diff) : '-' + formatLapTime(-diff);
+        }
+
+        if (aheadCheckpoint !== behindCheckpoint) {
+            const checkpointDiff = aheadCheckpoint - behindCheckpoint;
+            return checkpointDiff > 0 ? '+' + checkpointDiff + ' CP' : '';
+        }
+    }
+
+    return '';
 }
 
 function updateLapHistoryUI() {
@@ -356,7 +419,7 @@ function initPeer() {
             }
             clients[c.peer] = c;
             // Alapértelmezett értékek megadása, ha még nincs pozíció
-            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1, currentCheckpoint: 0 };
+            gameData[c.peer] = { x: track[0]?.x || 0, y: track[0]?.y || 0, angle: 0, color: '#fff', name: '...', finished: false, lap: 1, currentCheckpoint: 0, checkpointTimes: { 1: { 0: 0 } } };
         });
 
         c.on('data', (data) => {
@@ -369,8 +432,7 @@ function initPeer() {
                 if (data.finishTime !== undefined) gameData[c.peer].finishTime = data.finishTime;
                 gameData[c.peer].lap = data.lap;
                 gameData[c.peer].currentCheckpoint = data.currentCheckpoint;
-                // Kliens nevének és színének frissítése, amint megérkezik
-                gameData[c.peer].finishTime = data.time;
+                gameData[c.peer].checkpointTimes = data.checkpointTimes || gameData[c.peer].checkpointTimes || {};
                 if (data.name) gameData[c.peer].name = data.name;
                 if (data.color) gameData[c.peer].color = data.color;
             }
@@ -409,10 +471,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
     hostConn.on('open', () => {
         console.log("Sikeresen csatlakozva a Hosthoz!");
         // Amint sikeres a csatlakozás, a kliens beküldi a nevét és színét!
-        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, speed: player.speed, finished: false, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint });
-    });
-
-    hostConn.on('data', (data) => {
+        hostConn.send({ type: 'sync', x: player.x, y: player.y, angle: player.angle, speed: player.speed, finished: false, lap: player.lap, name: player.name, color: player.color, currentCheckpoint: player.currentCheckpoint, checkpointTimes: player.checkpointTimes });
         if (data.type === 'state') {
             let myFullId = prefix + myId;
             for (let id in data.players) {
@@ -428,6 +487,7 @@ function connectToHostWithRetry(hostId, attemptsLeft) {
                         gameData[id].finishTime = data.players[id].finishTime;
                         gameData[id].lap = data.players[id].lap;
                         gameData[id].currentCheckpoint = data.players[id].currentCheckpoint;
+                        gameData[id].checkpointTimes = data.players[id].checkpointTimes || gameData[id].checkpointTimes || {};
                         if (data.players[id].name) gameData[id].name = data.players[id].name;
                         if (data.players[id].color) gameData[id].color = data.players[id].color;
                     }
@@ -476,6 +536,7 @@ function startGame() {
     gameActive = false;
 
     player.currentCheckpoint = 0;
+    player.checkpointTimes = { 1: { 0: 0 } };
 
     if (track && track.length > 0) {
         player.x = track[0].x;
@@ -491,7 +552,7 @@ function startGame() {
     lapHistory = [];
     bestLapTime = null;
     updateLapHistoryUI();
-    gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, currentCheckpoint: player.currentCheckpoint };
+    gameData[myId] = { x: player.x, y: player.y, angle: player.angle, finished: false, lap: player.lap, currentCheckpoint: player.currentCheckpoint, checkpointTimes: player.checkpointTimes };
 
     drawScene();
     startCountdown();
@@ -597,6 +658,7 @@ function restartGame() {
     // 2. SAJÁT JÁTÉKOS RESETELÉSE
     player.lap = 1;
     player.currentCheckpoint = 0;
+    player.checkpointTimes = { 1: { 0: 0 } };
     player.finished = false;
     player.finishTime = null;
     player.raceStartTime = null;
@@ -619,6 +681,7 @@ function restartGame() {
         gameData[id].finishTime = null;
         gameData[id].lap = 1;
         gameData[id].currentCheckpoint = 0;
+        gameData[id].checkpointTimes = { 1: { 0: 0 } };
     }
 
     document.getElementById('hud').style.display = 'block';
@@ -644,16 +707,18 @@ function calculateLeaderboard() {
         }
     }
 
-    // Sort by: finished status desc, lap desc, currentCheckpoint desc
+    // Sort by: finished status, lap, checkpoint, and checkpoint crossing time
     allPlayers.sort((a, b) => {
         if (a.finished && !b.finished) return -1;
         if (!a.finished && b.finished) return 1;
         if (a.finished && b.finished) {
             return (a.finishTime || Infinity) - (b.finishTime || Infinity);
         }
-        if (b.lap !== a.lap) return b.lap - a.lap;
-        if (b.currentCheckpoint !== a.currentCheckpoint) return b.currentCheckpoint - a.currentCheckpoint;
-        return 0;
+        if (a.lap !== b.lap) return b.lap - a.lap;
+        if (a.currentCheckpoint !== b.currentCheckpoint) return b.currentCheckpoint - a.currentCheckpoint;
+        const aTime = getCheckpointTime(a) || 0;
+        const bTime = getCheckpointTime(b) || 0;
+        return aTime - bTime;
     });
 
     return allPlayers;
@@ -669,16 +734,21 @@ function updateLeaderboardUI() {
 
     leaderboard.slice(0, 10).forEach((p, idx) => {
         const position = idx + 1;
-        const nextPlayer = idx < leaderboard.length - 1 ? leaderboard[idx + 1] : null;
+        const aheadPlayer = idx > 0 ? leaderboard[idx - 1] : null;
         let timeDelta = '';
-        if (nextPlayer) {
-            timeDelta = calculateTimeGap(p, nextPlayer);
+        if (aheadPlayer) {
+            timeDelta = calculateTimeGap(aheadPlayer, p);
+        } else {
+            timeDelta = 'LEADER';
         }
 
         html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #333; color: ${p.isSelf ? '#ffd700' : '#fff'};">
-                <span style="font-size: 14px;">${position}. ${p.name || 'Játékos'} ${p.isSelf ? '(Te)' : ''}</span>
-                <span style="font-size: 12px; font-weight: bold; margin-left: 10px; white-space: nowrap; color: #8cff8c;">${timeDelta}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); background: ${idx === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.24)'}; color: ${p.isSelf ? '#ffd700' : '#fff'};">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                    <span style="font-size: 14px; font-weight: 700; width: 28px;">${position}.</span>
+                    <span style="font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">${p.name || 'Játékos'}</span>
+                </div>
+                <span style="font-size: 12px; font-weight: 700; color: #8cff8c; white-space: nowrap;">${timeDelta}</span>
             </div>
         `;
     });
@@ -687,20 +757,28 @@ function updateLeaderboardUI() {
 }
 
 // Calculate time gap between two players
-function calculateTimeGap(player1, player2) {
-    if (!player2) return '';
+function calculateTimeGap(ahead, behind) {
+    if (!ahead || !behind) return '';
 
-    if (player1.finished && player2.finished) {
-        const timeDiff = Math.abs((player1.finishTime || 0) - (player2.finishTime || 0));
+    if (ahead.finished && behind.finished) {
+        const timeDiff = Math.abs((behind.finishTime || 0) - (ahead.finishTime || 0));
         return '+' + formatLapTime(timeDiff);
     }
-    if (player1.finished && !player2.finished) {
-        const lapsBehind = totalLaps - player2.lap + 1;
-        if (lapsBehind > 0) return '+' + lapsBehind + ' kör';
+
+    const lapDiff = ahead.lap - behind.lap;
+    if (lapDiff > 0) {
+        return '+' + lapDiff + ' lap' + (lapDiff > 1 ? 's' : '');
     }
-    const lapDiff = player1.lap - player2.lap;
-    if (lapDiff > 0) return '+' + lapDiff + ' kör';
-    const cpDiff = player1.currentCheckpoint - player2.currentCheckpoint;
+
+    const aheadTime = getCheckpointTime(ahead);
+    const behindTime = getCheckpointTime(behind);
+
+    if (aheadTime != null && behindTime != null) {
+        const diff = behindTime - aheadTime;
+        return diff >= 0 ? '+' + formatLapTime(diff) : '-' + formatLapTime(-diff);
+    }
+
+    const cpDiff = ahead.currentCheckpoint - behind.currentCheckpoint;
     if (cpDiff > 0) return '+' + cpDiff + ' CP';
     return '';
 }
